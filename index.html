@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tuff</title>
+  <title>Discord P2P Web App</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
@@ -80,15 +80,16 @@
     </div>
   </div>
 
-  <audio id="remote-audio" autoplay></audio>
+  <div id="audio-container"></div>
 
   <script>
     const peer = new Peer();
     let connections = [];
-    let activeStream = null;
-    let activeCall = null;
+    let mediaCalls = [];
+    let localAudioStream = null;
     let currentChannel = 'general';
-    
+    let currentVc = null;
+
     const chats = {
       'general': JSON.parse(localStorage.getItem('chat_general') || '[]'),
       'announcements': JSON.parse(localStorage.getItem('chat_announcements') || '[]'),
@@ -98,6 +99,7 @@
     peer.on('open', (id) => {
       document.getElementById('my-id').innerText = `Your ID: ${id}`;
       renderMessages();
+      checkUrlParams();
     });
 
     peer.on('connection', (conn) => {
@@ -105,28 +107,48 @@
     });
 
     peer.on('call', (call) => {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-        call.answer(stream);
-        call.on('stream', (remoteStream) => {
-          document.getElementById('remote-audio').srcObject = remoteStream;
-        });
-      });
+      if (localAudioStream) {
+        call.answer(localAudioStream);
+        handleCallStream(call);
+      }
     });
 
     function connectPeerPrompt() {
-      const targetId = prompt("Enter peer ID to connect:");
-      if (targetId) {
-        const conn = peer.connect(targetId);
-        setupDataConn(conn);
+      let targetId = prompt("Enter peer ID or room link:");
+      if (!targetId) return;
+      if (targetId.includes('?peer=')) {
+        targetId = targetId.split('?peer=')[1];
       }
+      const conn = peer.connect(targetId);
+      setupDataConn(conn);
     }
 
     function setupDataConn(conn) {
-      connections.push(conn);
+      if (connections.some(c => c.peer === conn.peer)) return;
+      
+      conn.on('open', () => {
+        connections.push(conn);
+        appendSystem(`${conn.peer.substring(0, 5)} joined the room.`);
+        if (localAudioStream) {
+          const call = peer.call(conn.peer, localAudioStream);
+          handleCallStream(call);
+        }
+      });
+
       conn.on('data', (data) => {
         if (data.type === 'msg') {
           saveAndRenderMsg(data.channel, data.author, data.text);
+          connections.forEach(c => {
+            if (c.peer !== conn.peer && c.open) {
+              c.send(data);
+            }
+          });
         }
+      });
+
+      conn.on('close', () => {
+        connections = connections.filter(c => c.peer !== conn.peer);
+        appendSystem(`A user disconnected.`);
       });
     }
 
@@ -144,8 +166,16 @@
       const val = input.value.trim();
       if (!val) return;
 
-      const payload = { type: 'msg', channel: currentChannel, author: peer.id.substring(0, 5), text: val };
-      connections.forEach(c => c.send(payload));
+      const payload = { 
+        type: 'msg', 
+        channel: currentChannel, 
+        author: peer.id.substring(0, 5), 
+        text: val 
+      };
+      
+      connections.forEach(c => {
+        if (c.open) c.send(payload);
+      });
       
       saveAndRenderMsg(currentChannel, 'You', val);
       input.value = '';
@@ -170,31 +200,77 @@
       area.scrollTop = area.scrollHeight;
     }
 
+    function appendSystem(text) {
+      const area = document.getElementById('chat-area');
+      const div = document.createElement('div');
+      div.style.color = '#949ba4';
+      div.style.fontSize = '12px';
+      div.style.margin = '4px 0';
+      div.innerText = text;
+      area.appendChild(div);
+      area.scrollTop = area.scrollHeight;
+    }
+
     async function joinVoice(channelName, el) {
-      document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
+      if (currentVc === channelName) return;
+      leaveVoice();
       
       try {
-        activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        currentVc = channelName;
+        document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
         document.getElementById('vc-bar').style.display = 'flex';
         document.getElementById('vc-channel-name').innerText = channelName;
 
         connections.forEach(conn => {
-          activeCall = peer.call(conn.peer, activeStream);
-          activeCall.on('stream', (remoteStream) => {
-            document.getElementById('remote-audio').srcObject = remoteStream;
-          });
+          if (conn.open) {
+            const call = peer.call(conn.peer, localAudioStream);
+            handleCallStream(call);
+          }
         });
       } catch (err) {
-        alert("Microphone access required for Voice Channels.");
+        alert("Microphone permission required for voice chat.");
       }
     }
 
+    function handleCallStream(call) {
+      mediaCalls.push(call);
+      call.on('stream', (remoteStream) => {
+        let audio = document.getElementById(`audio-${call.peer}`);
+        if (!audio) {
+          audio = document.createElement('audio');
+          audio.id = `audio-${call.peer}`;
+          audio.autoplay = true;
+          document.getElementById('audio-container').appendChild(audio);
+        }
+        audio.srcObject = remoteStream;
+      });
+      call.on('close', () => {
+        const audio = document.getElementById(`audio-${call.peer}`);
+        if (audio) audio.remove();
+      });
+    }
+
     function leaveVoice() {
-      if (activeStream) {
-        activeStream.getTracks().forEach(track => track.stop());
+      if (localAudioStream) {
+        localAudioStream.getTracks().forEach(track => track.stop());
+        localAudioStream = null;
       }
+      mediaCalls.forEach(call => call.close());
+      mediaCalls = [];
+      document.getElementById('audio-container').innerHTML = '';
       document.getElementById('vc-bar').style.display = 'none';
+      currentVc = null;
+    }
+
+    function checkUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const peerId = params.get('peer');
+      if (peerId) {
+        const conn = peer.connect(peerId);
+        setupDataConn(conn);
+      }
     }
   </script>
 </body>
