@@ -1,303 +1,416 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Discord P2P Web App</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-    body { background-color: #313338; color: #dbdee1; display: flex; height: 100vh; overflow: hidden; }
-    
-    .sidebar { width: 240px; background-color: #2b2d31; display: flex; flex-direction: column; border-right: 1px solid #1f2023; }
-    .server-header { padding: 16px; font-weight: 700; color: #f2f3f5; border-bottom: 1px solid #1f2023; font-size: 15px; }
-    .channel-list { flex: 1; overflow-y: auto; padding: 10px 8px; }
-    .section-label { font-size: 11px; font-weight: 700; color: #949ba4; text-transform: uppercase; margin: 12px 8px 4px; }
-    
-    .channel { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; color: #949ba4; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 2px; }
-    .channel:hover { background-color: #35373c; color: #dbdee1; }
-    .channel.active { background-color: #404249; color: #ffffff; }
-    
-    .main-content { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
-    .chat-header { height: 52px; border-bottom: 1px solid #1f2023; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-weight: 600; color: #f2f3f5; }
-    
-    .chat-area { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-    .message { display: flex; flex-direction: column; }
-    .msg-author { font-size: 13px; font-weight: 600; color: #38bdf8; margin-bottom: 2px; }
-    .msg-content { font-size: 14px; color: #dbdee1; line-height: 1.4; }
-    
-    .input-container { padding: 16px; background-color: #313338; }
-    .input-box { width: 100%; background-color: #383a40; border: none; border-radius: 8px; padding: 12px 16px; color: #dcddde; font-size: 14px; outline: none; }
-    
-    .vc-bar { background-color: #232428; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #1f2023; }
-    .vc-info { font-size: 12px; color: #23a55a; font-weight: 600; }
-    .btn { background-color: #5865f2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn:hover { background-color: #4752c4; }
-    .btn-danger { background-color: #da373c; }
-    .btn-danger:hover { background-color: #a1282c; }
-    
-    .user-controls { display: flex; align-items: center; gap: 8px; }
-    .username-badge { font-size: 12px; background: #1e1f22; padding: 4px 8px; border-radius: 4px; color: #f2f3f5; cursor: pointer; }
-    .id-tag { font-size: 11px; color: #949ba4; background: #1e1f22; padding: 4px 8px; border-radius: 4px; user-select: all; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE STATIC WHISPER - OVERDRIVE 3D</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #020202; font-family: 'Courier New', Courier, monospace; color: #fff; }
+        #canvas-container { position: relative; width: 100%; height: 100%; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 30px; z-index: 10; }
+        .hud-panel { background: rgba(0,0,0,0.65); padding: 15px 25px; border: 1px solid #331111; border-left: 4px solid #ff3333; backdrop-filter: blur(8px); text-transform: uppercase; font-size: 13px; letter-spacing: 2px; }
+        #battery-bar { width: 150px; height: 8px; border: 1px solid #ff3333; margin-top: 5px; background: rgba(255,0,0,0.1); }
+        #battery-fill { height: 100%; background: #ff3333; width: 100%; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: rgba(255,255,255,0.4); transform: translate(-50%, -50%); pointer-events: none; border-radius: 50%; }
+        #overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #050507; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; text-align: center; padding: 20px; transition: opacity 0.6s ease; }
+        h1 { font-size: 46px; color: #ff3333; margin-bottom: 20px; letter-spacing: 6px; text-shadow: 0 0 15px rgba(255,0,0,0.4); }
+        p { max-width: 600px; font-size: 15px; line-height: 1.6; margin-bottom: 35px; color: #888; letter-spacing: 1px; }
+        button { background: transparent; border: 2px solid #ff3333; color: #ff3333; padding: 16px 45px; font-family: inherit; font-size: 16px; cursor: pointer; font-weight: bold; letter-spacing: 3px; transition: all 0.3s ease; }
+        button:hover { background: #ff3333; color: #000; box-shadow: 0 0 25px rgba(255, 51, 51, 0.4); }
+        .controls-hint { margin-top: 40px; font-size: 11px; color: #444; border-top: 1px solid #15151c; padding-top: 20px; line-height: 1.7; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <div class="sidebar">
-    <div class="server-header">P2P Mesh Server</div>
-    <div class="channel-list">
-      <div class="section-label">Text Channels</div>
-      <div class="channel active" onclick="switchChannel('general', this)"># general</div>
-      <div class="channel" onclick="switchChannel('announcements', this)"># announcements</div>
-      <div class="channel" onclick="switchChannel('off-topic', this)"># off-topic</div>
+    <div id="canvas-container">
+        <div id="crosshair"></div>
+        <div id="ui-layer">
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+                <div class="hud-panel">Anomalies Secured: <span id="score-display" style="color: #ff3333; font-weight: bold;">0/5</span></div>
+                <div class="hud-panel">Flashlight Cell<div id="battery-bar"><div id="battery-fill"></div></div></div>
+            </div>
+            <div id="subtitles" style="text-align: center; color: rgba(255,51,51,0.6); font-size: 13px; letter-spacing: 4px; min-height: 20px;"></div>
+        </div>
 
-      <div class="section-label" style="margin-top: 16px;">Voice Channels</div>
-      <div class="channel" onclick="joinVoice('Lounge 1', this)">🔊 Lounge 1</div>
-      <div class="channel" onclick="joinVoice('Lounge 2', this)">🔊 Lounge 2</div>
-      <div class="channel" onclick="joinVoice('Lounge 3', this)">🔊 Lounge 3</div>
-      <div class="channel" onclick="joinVoice('Lounge 4', this)">🔊 Lounge 4</div>
-      <div class="channel" onclick="joinVoice('Lounge 5', this)">🔊 Lounge 5</div>
-    </div>
-    
-    <div class="vc-bar" id="vc-bar" style="display: none;">
-      <div>
-        <div class="vc-info">Voice Connected</div>
-        <div id="vc-channel-name" style="font-size: 11px; color: #949ba4;">Lounge 1</div>
-      </div>
-      <button class="btn btn-danger" onclick="leaveVoice()">Disconnect</button>
-    </div>
-  </div>
-
-  <div class="main-content">
-    <div class="chat-header">
-      <span id="current-channel-title"># general</span>
-      <div class="user-controls">
-        <span class="username-badge" id="user-display" onclick="changeUsername()">User: Setting up...</span>
-        <span class="id-tag" id="my-id">Connecting...</span>
-        <button class="btn" onclick="connectPeerPrompt()">Connect Room</button>
-      </div>
+        <div id="overlay-screen">
+            <h1 id="menu-title">THE STATIC WHISPER 3D</h1>
+            <p id="menu-desc">Trapped in a deep subterranean volumetric bunker grid. Extract 5 glowing hyper-dimensional anomalies to force an emergency exit structural breach. The Static manifestation stalks the corridors—it freezes when caught directly in your flashlight light cone, but hunts aggressively through unmonitored shadows.</p>
+            <button id="start-btn">Initialize Descent</button>
+            <div class="controls-hint">
+                CONTROLS:<br>W, A, S, D — Move Through Grid<br>Mouse Movement — 3D Atmospheric Camera Look<br>Left Click Screen — Capture Mouse Pointer<br>Spacebar — Toggle Flashlight Circuit
+            </div>
+        </div>
     </div>
 
-    <div class="chat-area" id="chat-area"></div>
-
-    <div class="input-container">
-      <input type="text" class="input-box" id="msg-input" placeholder="Message #general" onkeydown="if(event.key==='Enter') sendMsg()" />
-    </div>
-  </div>
-
-  <div id="audio-container"></div>
-
-  <script>
-    let myUsername = localStorage.getItem('p2p_username') || `User_${Math.floor(1000 + Math.random() * 9000)}`;
-    const peer = new Peer();
-    let connections = {};
-    let activeCalls = {};
-    let localAudioStream = null;
-    let currentChannel = 'general';
-    let currentVc = null;
-
-    const chats = {
-      'general': JSON.parse(localStorage.getItem('chat_general') || '[]'),
-      'announcements': JSON.parse(localStorage.getItem('chat_announcements') || '[]'),
-      'off-topic': JSON.parse(localStorage.getItem('chat_off-topic') || '[]')
-    };
-
-    peer.on('open', (id) => {
-      document.getElementById('my-id').innerText = `ID: ${id}`;
-      updateUserDisplay();
-      renderMessages();
-      checkUrlParams();
-    });
-
-    peer.on('connection', (conn) => {
-      setupDataConn(conn);
-    });
-
-    peer.on('call', (call) => {
-      if (localAudioStream) {
-        call.answer(localAudioStream);
-        handleCallStream(call);
-      }
-    });
-
-    function updateUserDisplay() {
-      document.getElementById('user-display').innerText = `👤 ${myUsername}`;
-    }
-
-    function changeUsername() {
-      const name = prompt("Enter your new username:", myUsername);
-      if (name && name.trim()) {
-        myUsername = name.trim();
-        localStorage.setItem('p2p_username', myUsername);
-        updateUserDisplay();
-      }
-    }
-
-    function connectPeerPrompt() {
-      let targetId = prompt("Enter host peer ID or link:");
-      if (!targetId) return;
-      if (targetId.includes('?peer=')) {
-        targetId = targetId.split('?peer=')[1];
-      }
-      connectToPeer(targetId);
-    }
-
-    function connectToPeer(targetId) {
-      if (targetId === peer.id || connections[targetId]) return;
-      const conn = peer.connect(targetId);
-      setupDataConn(conn);
-    }
-
-    function setupDataConn(conn) {
-      conn.on('open', () => {
-        connections[conn.peer] = conn;
-        appendSystem(`Connected to peer: ${conn.peer.substring(0, 5)}`);
-        
-        const knownPeers = Object.keys(connections);
-        conn.send({ type: 'peer-discovery', peers: [peer.id, ...knownPeers] });
-
-        if (localAudioStream) {
-          const call = peer.call(conn.peer, localAudioStream);
-          handleCallStream(call);
-        }
-      });
-
-      conn.on('data', (data) => {
-        if (data.type === 'peer-discovery') {
-          data.peers.forEach(id => {
-            if (id !== peer.id && !connections[id]) {
-              connectToPeer(id);
+    <script>
+        class IntelligentAudio {
+            constructor() { this.ctx = null; }
+            init() {
+                if (this.ctx) return;
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.buildSubHum();
             }
-          });
-        } else if (data.type === 'msg') {
-          saveAndRenderMsg(data.channel, data.author, data.text);
+            buildSubHum() {
+                let osc = this.ctx.createOscillator();
+                let filter = this.ctx.createBiquadFilter();
+                let gain = this.ctx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(32, this.ctx.currentTime);
+                filter.type = 'lowpass'; filter.frequency.setValueAtTime(60, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+                osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                osc.start();
+            }
+            clickFlashlight() {
+                if(!this.ctx) return;
+                let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.04);
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.05);
+            }
+            playStep() {
+                if(!this.ctx) return;
+                let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(55, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(5, this.ctx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.13);
+            }
+            injectProximityScreech(dist) {
+                if(!this.ctx || dist > 12) return;
+                let intensity = Math.max(0, 1.0 - (dist / 12));
+                let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80 + Math.random() * 260, this.ctx.currentTime);
+                gain.gain.setValueAtTime(intensity * 0.22, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.07);
+            }
+            playExtraction() {
+                let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1400, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.55);
+            }
+            panicJumpscare() {
+                for(let i=0; i<6; i++) {
+                    let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(40 + Math.random()*110, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(10, this.ctx.currentTime + 2.0);
+                    gain.gain.setValueAtTime(0.45, this.ctx.currentTime);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(); osc.stop(this.ctx.currentTime + 2.0);
+                }
+            }
         }
-      });
+        const Sound = new IntelligentAudio();
 
-      conn.on('close', () => {
-        delete connections[conn.peer];
-        appendSystem(`Peer disconnected.`);
-      });
-    }
+        const GRID_SIZE = 14;
+        const MAP = [
+            1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+            1,0,0,0,0,0,1,0,0,0,0,0,0,1,
+            1,0,1,1,1,0,1,0,1,1,1,1,0,1,
+            1,0,1,0,0,0,0,0,0,0,0,1,0,1,
+            1,0,1,0,1,1,1,1,1,1,0,1,0,1,
+            1,0,0,0,1,0,0,0,0,1,0,0,0,1,
+            1,1,1,0,1,0,1,1,0,1,0,1,1,1,
+            1,0,0,0,1,0,1,1,0,1,0,0,0,1,
+            1,0,1,1,1,0,0,0,0,1,1,1,0,1,
+            1,0,0,0,0,0,1,1,0,0,0,0,0,1,
+            1,1,1,1,1,0,1,1,1,1,1,1,0,1,
+            1,0,0,0,1,0,0,0,0,0,0,1,0,1,
+            1,0,1,0,0,0,1,1,1,1,0,0,0,1,
+            1,1,1,1,1,1,1,1,1,1,1,1,1,1
+        ];
 
-    function switchChannel(name, el) {
-      document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
-      currentChannel = name;
-      document.getElementById('current-channel-title').innerText = `# ${name}`;
-      document.getElementById('msg-input').placeholder = `Message #${name}`;
-      renderMessages();
-    }
+        let scene, camera, renderer, flashlight, ambientLight;
+        let gameState = 'menu';
+        let collectedAnomalies = 0;
+        let batteryLife = 100.0;
+        let flashCircuitOn = true;
+        let moveTimer = 0;
 
-    function sendMsg() {
-      const input = document.getElementById('msg-input');
-      const val = input.value.trim();
-      if (!val) return;
+        const player = {
+            pos: new THREE.Vector3(1.5, 0.8, 1.5),
+            rot: new THREE.Euler(0, 0, 0, 'YXZ'),
+            speed: 0.07,
+            radius: 0.25
+        };
 
-      const payload = { 
-        type: 'msg', 
-        channel: currentChannel, 
-        author: myUsername, 
-        text: val 
-      };
-      
-      Object.values(connections).forEach(conn => {
-        if (conn.open) conn.send(payload);
-      });
-      
-      saveAndRenderMsg(currentChannel, `${myUsername} (You)`, val);
-      input.value = '';
-    }
+        const entity = {
+            mesh: null,
+            pos: new THREE.Vector3(12.5, 0.0, 12.5),
+            speed: 0.038
+        };
 
-    function saveAndRenderMsg(channel, author, text) {
-      if (!chats[channel]) chats[channel] = [];
-      chats[channel].push({ author, text });
-      localStorage.setItem(`chat_${channel}`, JSON.stringify(chats[channel]));
-      if (channel === currentChannel) renderMessages();
-    }
+        let anomalies = [
+            { pos: new THREE.Vector3(1.5, 0.6, 12.5), mesh: null, active: true },
+            { pos: new THREE.Vector3(12.5, 0.6, 1.5), mesh: null, active: true },
+            { pos: new THREE.Vector3(6.5, 0.6, 5.5), mesh: null, active: true },
+            { pos: new THREE.Vector3(11.5, 0.6, 11.5), mesh: null, active: true },
+            { pos: new THREE.Vector3(3.5, 0.6, 7.5), mesh: null, active: true }
+        ];
 
-    function renderMessages() {
-      const area = document.getElementById('chat-area');
-      area.innerHTML = '';
-      (chats[currentChannel] || []).forEach(m => {
-        const div = document.createElement('div');
-        div.className = 'message';
-        div.innerHTML = `<div class="msg-author">${m.author}</div><div class="msg-content">${m.text}</div>`;
-        area.appendChild(div);
-      });
-      area.scrollTop = area.scrollHeight;
-    }
+        const input = { w:0, a:0, s:0, d:0 };
 
-    function appendSystem(text) {
-      const area = document.getElementById('chat-area');
-      const div = document.createElement('div');
-      div.style.color = '#949ba4';
-      div.style.fontSize = '12px';
-      div.style.margin = '4px 0';
-      div.innerText = text;
-      area.appendChild(div);
-      area.scrollTop = area.scrollHeight;
-    }
-
-    async function joinVoice(channelName, el) {
-      if (currentVc === channelName) return;
-      leaveVoice();
-      
-      try {
-        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        currentVc = channelName;
-        document.getElementById('vc-bar').style.display = 'flex';
-        document.getElementById('vc-channel-name').innerText = channelName;
-
-        Object.keys(connections).forEach(peerId => {
-          const call = peer.call(peerId, localAudioStream);
-          handleCallStream(call);
+        const container = document.getElementById('canvas-container');
+        
+        container.addEventListener('click', () => {
+            if(gameState === 'playing') container.requestPointerLock();
         });
-      } catch (err) {
-        alert("Microphone permission required for voice channels.");
-      }
-    }
 
-    function handleCallStream(call) {
-      activeCalls[call.peer] = call;
-      call.on('stream', (remoteStream) => {
-        let audio = document.getElementById(`audio-${call.peer}`);
-        if (!audio) {
-          audio = document.createElement('audio');
-          audio.id = `audio-${call.peer}`;
-          audio.autoplay = true;
-          document.getElementById('audio-container').appendChild(audio);
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === container && gameState === 'playing') {
+                player.rot.y -= e.movementX * 0.0022;
+                player.rot.x -= e.movementY * 0.0022;
+                player.rot.x = Math.max(-Math.PI/2.4, Math.min(Math.PI/2.4, player.rot.x));
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if(gameState !== 'playing') return;
+            if(e.code === 'KeyW' || e.code === 'ArrowUp') input.w = 1;
+            if(e.code === 'KeyS' || e.code === 'ArrowDown') input.s = 1;
+            if(e.code === 'KeyA') input.a = 1;
+            if(e.code === 'KeyD') input.d = 1;
+            if(e.code === 'Space') {
+                flashCircuitOn = !flashCircuitOn;
+                Sound.clickFlashlight();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if(e.code === 'KeyW' || e.code === 'ArrowUp') input.w = 0;
+            if(e.code === 'KeyS' || e.code === 'ArrowDown') input.s = 0;
+            if(e.code === 'KeyA') input.a = 0;
+            if(e.code === 'KeyD') input.d = 0;
+        });
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            if(gameState === 'menu') {
+                Sound.init();
+                document.getElementById('overlay-screen').style.opacity = 0;
+                setTimeout(() => document.getElementById('overlay-screen').style.display = 'none', 600);
+                buildEngine3D();
+                gameState = 'playing';
+                window.requestAnimationFrame(loop);
+            } else {
+                location.reload();
+            }
+        });
+
+        function buildEngine3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x010103);
+            scene.fog = new THREE.FogLinear(0x010103, 1.0, 9.5);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.85, metalness: 0.1 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x111114, roughness: 0.9, metalness: 0.05 });
+            const ceilMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0d, roughness: 0.95 });
+
+            const blockGeo = new THREE.BoxGeometry(1, 2.5, 1);
+            const floorGeo = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+
+            for(let z=0; z<GRID_SIZE; z++) {
+                for(let x=0; x<GRID_SIZE; x++) {
+                    let type = MAP[z * GRID_SIZE + x];
+                    if(type === 1) {
+                        let wall = new THREE.Mesh(blockGeo, wallMat);
+                        wall.position.set(x + 0.5, 1.25, z + 0.5);
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        scene.add(wall);
+                    }
+                }
+            }
+
+            let floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(GRID_SIZE/2, 0, GRID_SIZE/2);
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            let ceiling = new THREE.Mesh(floorGeo, ceilMat);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.set(GRID_SIZE/2, 2.5, GRID_SIZE/2);
+            scene.add(ceiling);
+
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.008);
+            scene.add(ambientLight);
+
+            flashlight = new THREE.SpotLight(0xfff5df, 5.0, 14.0, Math.PI / 6, 0.5, 1.2);
+            flashlight.castShadow = true;
+            flashlight.shadow.mapSize.width = 1024;
+            flashlight.shadow.mapSize.height = 1024;
+            flashlight.shadow.camera.near = 0.1;
+            flashlight.shadow.camera.far = 15;
+            scene.add(flashlight);
+            scene.add(flashlight.target);
+
+            const anomalyGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const anomalyMat = new THREE.MeshBasicMaterial({ color: 0x00d2ff });
+            anomalies.forEach(item => {
+                let mesh = new THREE.Mesh(anomalyGeo, anomalyMat);
+                mesh.position.copy(item.pos);
+                let light = new THREE.PointLight(0x00d2ff, 0.8, 1.5);
+                mesh.add(light);
+                scene.add(mesh);
+                item.mesh = mesh;
+            });
+
+            const entGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.9, 8);
+            const entMat = new THREE.MeshBasicMaterial({ color: 0x050000, transparent: true, opacity: 0.95 });
+            entity.mesh = new THREE.Mesh(entGeo, entMat);
+            entity.mesh.position.copy(entity.pos);
+            scene.add(entity.mesh);
+
+            window.addEventListener('resize', onWindowResize);
         }
-        audio.srcObject = remoteStream;
-      });
-      
-      call.on('close', () => {
-        const audio = document.getElementById(`audio-${call.peer}`);
-        if (audio) audio.remove();
-        delete activeCalls[call.peer];
-      });
-    }
 
-    function leaveVoice() {
-      if (localAudioStream) {
-        localAudioStream.getTracks().forEach(track => track.stop());
-        localAudioStream = null;
-      }
-      Object.values(activeCalls).forEach(call => call.close());
-      activeCalls = {};
-      document.getElementById('audio-container').innerHTML = '';
-      document.getElementById('vc-bar').style.display = 'none';
-      currentVc = null;
-    }
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-    function checkUrlParams() {
-      const params = new URLSearchParams(window.location.search);
-      const peerId = params.get('peer');
-      if (peerId) {
-        connectToPeer(peerId);
-      }
-    }
-  </script>
+        function runSimulation() {
+            camera.quaternion.setFromEuler(player.rot);
+
+            let frontVec = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            let sideVec = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            frontVec.y = 0; sideVec.y = 0;
+            frontVec.normalize(); sideVec.normalize();
+
+            let moveDirection = new THREE.Vector3();
+            if(input.w) moveDirection.add(frontVec);
+            if(input.s) moveDirection.sub(frontVec);
+            if(input.d) moveDirection.add(sideVec);
+            if(input.a) moveDirection.sub(sideVec);
+            
+            if(moveDirection.lengthSq() > 0) {
+                moveDirection.normalize().multiplyScalar(player.speed);
+                
+                let nextX = player.pos.x + moveDirection.x;
+                let nextZ = player.pos.z + moveDirection.z;
+
+                if(MAP[Math.floor(player.pos.z) * GRID_SIZE + Math.floor(nextX + Math.sign(moveDirection.x)*player.radius)] === 0) player.pos.x = nextX;
+                if(MAP[Math.floor(nextZ + Math.sign(moveDirection.z)*player.radius) * GRID_SIZE + Math.floor(player.pos.x)] === 0) player.pos.z = nextZ;
+
+                moveTimer += 0.15;
+                if(Math.sin(moveTimer) > 0.98) Sound.playStep();
+            }
+
+            camera.position.copy(player.pos);
+            if(input.w || input.s || input.a || input.d) {
+                camera.position.y = 0.8 + Math.sin(moveTimer * 1.8) * 0.03;
+            }
+
+            flashlight.position.copy(camera.position);
+            let targetDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            flashlight.target.position.copy(camera.position).add(targetDirection);
+
+            if(flashCircuitOn && batteryLife > 0) {
+                batteryLife -= 0.035;
+                flashlight.intensity = 4.8 + Math.random() * 0.3;
+                if(batteryLife <= 0) { batteryLife = 0; flashCircuitOn = false; }
+            } else {
+                flashlight.intensity = 0;
+                if(!flashCircuitOn && batteryLife < 100) batteryLife += 0.015;
+            }
+            document.getElementById('battery-fill').style.width = batteryLife + '%';
+
+            let toPlayerVec = new THREE.Vector3().subVectors(player.pos, entity.pos);
+            let unitToPlayer = toPlayerVec.clone().normalize();
+            let distanceToTarget = toPlayerVec.length();
+
+            if(distanceToTarget < 0.48) triggerLossSequence();
+
+            let lookingVector = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            let dotProduct = lookingVector.dot(unitToPlayer.clone().negate());
+
+            let spottedInBeam = (dotProduct > 0.74 && flashCircuitOn && distanceToTarget < 9.0);
+
+            if(!spottedInBeam) {
+                entity.pos.add(unitToPlayer.multiplyScalar(entity.speed));
+            }
+            entity.mesh.position.copy(entity.pos);
+            entity.mesh.position.y = 0.95;
+            
+            if(Math.random() > 0.88) {
+                entity.mesh.position.x += (Math.random() - 0.5) * 0.12;
+            }
+
+            if(Math.random() > 0.75) {
+                Sound.injectProximityScreech(distanceToTarget);
+                if(distanceToTarget < 4.0) {
+                    document.getElementById('subtitles').innerText = Math.random() > 0.5 ? "[ HEAR US ]" : "[ TURN AROUND ]";
+                } else {
+                    document.getElementById('subtitles').innerText = "";
+                }
+            }
+
+            anomalies.forEach(item => {
+                if(item.active) {
+                    item.mesh.rotation.y += 0.04;
+                    item.mesh.rotation.x += 0.02;
+
+                    let targetDist = player.pos.distanceTo(item.pos);
+                    if(targetDist < 0.45) {
+                        item.active = false;
+                        scene.remove(item.mesh);
+                        collectedAnomalies++;
+                        Sound.playExtraction();
+                        document.getElementById('score-display').innerText = collectedAnomalies + "/5";
+                        if(collectedAnomalies >= 5) triggerWinSequence();
+                    }
+                }
+            });
+        }
+
+        function triggerLossSequence() {
+            gameState = 'gameover';
+            Sound.panicJumpscare();
+            document.exitPointerLock();
+            document.getElementById('menu-title').innerText = "DISCONNECTED";
+            document.getElementById('menu-title').style.color = "#ff0000";
+            document.getElementById('menu-desc').innerText = "The Static overtook your neural link. System files scrambled. Signal lost permanently.";
+            document.getElementById('start-btn').innerText = "Reconnect Link";
+            document.getElementById('overlay-screen').style.display = 'flex';
+            document.getElementById('overlay-screen').style.opacity = 1;
+        }
+
+        function triggerWinSequence() {
+            gameState = 'win';
+            document.exitPointerLock();
+            document.getElementById('menu-title').innerText = "SIGNAL RECOVERED";
+            document.getElementById('menu-title').style.color = "#00ffcc";
+            document.getElementById('menu-desc').innerText = "All 5 localized spatial anomalies cleanly isolated. Spatial containment drop complete. You successfully returned to surface reality.";
+            document.getElementById('start-btn').innerText = "Re-enter Grid Matrix";
+            document.getElementById('overlay-screen').style.display = 'flex';
+            document.getElementById('overlay-screen').style.opacity = 1;
+        }
+
+        function loop() {
+            if(gameState !== 'playing') return;
+            runSimulation();
+            renderer.render(scene, camera);
+            window.requestAnimationFrame(loop);
+        }
+    </script>
 </body>
 </html>
