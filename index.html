@@ -20,11 +20,11 @@
     .channel.active { background-color: #404249; color: #ffffff; }
     
     .main-content { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
-    .chat-header { height: 48px; border-bottom: 1px solid #1f2023; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-weight: 600; color: #f2f3f5; }
+    .chat-header { height: 52px; border-bottom: 1px solid #1f2023; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-weight: 600; color: #f2f3f5; }
     
     .chat-area { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
     .message { display: flex; flex-direction: column; }
-    .msg-author { font-size: 13px; font-weight: 600; color: #f2f3f5; margin-bottom: 2px; }
+    .msg-author { font-size: 13px; font-weight: 600; color: #38bdf8; margin-bottom: 2px; }
     .msg-content { font-size: 14px; color: #dbdee1; line-height: 1.4; }
     
     .input-container { padding: 16px; background-color: #313338; }
@@ -33,19 +33,24 @@
     .vc-bar { background-color: #232428; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #1f2023; }
     .vc-info { font-size: 12px; color: #23a55a; font-weight: 600; }
     .btn { background-color: #5865f2; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background-color: #4752c4; }
     .btn-danger { background-color: #da373c; }
+    .btn-danger:hover { background-color: #a1282c; }
+    
+    .user-controls { display: flex; align-items: center; gap: 8px; }
+    .username-badge { font-size: 12px; background: #1e1f22; padding: 4px 8px; border-radius: 4px; color: #f2f3f5; cursor: pointer; }
     .id-tag { font-size: 11px; color: #949ba4; background: #1e1f22; padding: 4px 8px; border-radius: 4px; user-select: all; }
   </style>
 </head>
 <body>
 
   <div class="sidebar">
-    <div class="server-header">P2P Server</div>
+    <div class="server-header">P2P Mesh Server</div>
     <div class="channel-list">
       <div class="section-label">Text Channels</div>
-      <div class="channel active" onclick="switchChannel('general', 'text', this)"># general</div>
-      <div class="channel" onclick="switchChannel('announcements', 'text', this)"># announcements</div>
-      <div class="channel" onclick="switchChannel('off-topic', 'text', this)"># off-topic</div>
+      <div class="channel active" onclick="switchChannel('general', this)"># general</div>
+      <div class="channel" onclick="switchChannel('announcements', this)"># announcements</div>
+      <div class="channel" onclick="switchChannel('off-topic', this)"># off-topic</div>
 
       <div class="section-label" style="margin-top: 16px;">Voice Channels</div>
       <div class="channel" onclick="joinVoice('Lounge 1', this)">🔊 Lounge 1</div>
@@ -67,9 +72,10 @@
   <div class="main-content">
     <div class="chat-header">
       <span id="current-channel-title"># general</span>
-      <div>
-        <span class="id-tag" id="my-id">Initializing ID...</span>
-        <button class="btn" style="margin-left: 8px;" onclick="connectPeerPrompt()">Connect Peer</button>
+      <div class="user-controls">
+        <span class="username-badge" id="user-display" onclick="changeUsername()">User: Setting up...</span>
+        <span class="id-tag" id="my-id">Connecting...</span>
+        <button class="btn" onclick="connectPeerPrompt()">Connect Room</button>
       </div>
     </div>
 
@@ -83,9 +89,10 @@
   <div id="audio-container"></div>
 
   <script>
+    let myUsername = localStorage.getItem('p2p_username') || `User_${Math.floor(1000 + Math.random() * 9000)}`;
     const peer = new Peer();
-    let connections = [];
-    let mediaCalls = [];
+    let connections = {};
+    let activeCalls = {};
     let localAudioStream = null;
     let currentChannel = 'general';
     let currentVc = null;
@@ -97,7 +104,8 @@
     };
 
     peer.on('open', (id) => {
-      document.getElementById('my-id').innerText = `Your ID: ${id}`;
+      document.getElementById('my-id').innerText = `ID: ${id}`;
+      updateUserDisplay();
       renderMessages();
       checkUrlParams();
     });
@@ -113,22 +121,42 @@
       }
     });
 
+    function updateUserDisplay() {
+      document.getElementById('user-display').innerText = `👤 ${myUsername}`;
+    }
+
+    function changeUsername() {
+      const name = prompt("Enter your new username:", myUsername);
+      if (name && name.trim()) {
+        myUsername = name.trim();
+        localStorage.setItem('p2p_username', myUsername);
+        updateUserDisplay();
+      }
+    }
+
     function connectPeerPrompt() {
-      let targetId = prompt("Enter peer ID or room link:");
+      let targetId = prompt("Enter host peer ID or link:");
       if (!targetId) return;
       if (targetId.includes('?peer=')) {
         targetId = targetId.split('?peer=')[1];
       }
+      connectToPeer(targetId);
+    }
+
+    function connectToPeer(targetId) {
+      if (targetId === peer.id || connections[targetId]) return;
       const conn = peer.connect(targetId);
       setupDataConn(conn);
     }
 
     function setupDataConn(conn) {
-      if (connections.some(c => c.peer === conn.peer)) return;
-      
       conn.on('open', () => {
-        connections.push(conn);
-        appendSystem(`${conn.peer.substring(0, 5)} joined the room.`);
+        connections[conn.peer] = conn;
+        appendSystem(`Connected to peer: ${conn.peer.substring(0, 5)}`);
+        
+        const knownPeers = Object.keys(connections);
+        conn.send({ type: 'peer-discovery', peers: [peer.id, ...knownPeers] });
+
         if (localAudioStream) {
           const call = peer.call(conn.peer, localAudioStream);
           handleCallStream(call);
@@ -136,23 +164,24 @@
       });
 
       conn.on('data', (data) => {
-        if (data.type === 'msg') {
-          saveAndRenderMsg(data.channel, data.author, data.text);
-          connections.forEach(c => {
-            if (c.peer !== conn.peer && c.open) {
-              c.send(data);
+        if (data.type === 'peer-discovery') {
+          data.peers.forEach(id => {
+            if (id !== peer.id && !connections[id]) {
+              connectToPeer(id);
             }
           });
+        } else if (data.type === 'msg') {
+          saveAndRenderMsg(data.channel, data.author, data.text);
         }
       });
 
       conn.on('close', () => {
-        connections = connections.filter(c => c.peer !== conn.peer);
-        appendSystem(`A user disconnected.`);
+        delete connections[conn.peer];
+        appendSystem(`Peer disconnected.`);
       });
     }
 
-    function switchChannel(name, type, el) {
+    function switchChannel(name, el) {
       document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
       currentChannel = name;
@@ -169,15 +198,15 @@
       const payload = { 
         type: 'msg', 
         channel: currentChannel, 
-        author: peer.id.substring(0, 5), 
+        author: myUsername, 
         text: val 
       };
       
-      connections.forEach(c => {
-        if (c.open) c.send(payload);
+      Object.values(connections).forEach(conn => {
+        if (conn.open) conn.send(payload);
       });
       
-      saveAndRenderMsg(currentChannel, 'You', val);
+      saveAndRenderMsg(currentChannel, `${myUsername} (You)`, val);
       input.value = '';
     }
 
@@ -218,24 +247,20 @@
       try {
         localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         currentVc = channelName;
-        document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
-        el.classList.add('active');
         document.getElementById('vc-bar').style.display = 'flex';
         document.getElementById('vc-channel-name').innerText = channelName;
 
-        connections.forEach(conn => {
-          if (conn.open) {
-            const call = peer.call(conn.peer, localAudioStream);
-            handleCallStream(call);
-          }
+        Object.keys(connections).forEach(peerId => {
+          const call = peer.call(peerId, localAudioStream);
+          handleCallStream(call);
         });
       } catch (err) {
-        alert("Microphone permission required for voice chat.");
+        alert("Microphone permission required for voice channels.");
       }
     }
 
     function handleCallStream(call) {
-      mediaCalls.push(call);
+      activeCalls[call.peer] = call;
       call.on('stream', (remoteStream) => {
         let audio = document.getElementById(`audio-${call.peer}`);
         if (!audio) {
@@ -246,9 +271,11 @@
         }
         audio.srcObject = remoteStream;
       });
+      
       call.on('close', () => {
         const audio = document.getElementById(`audio-${call.peer}`);
         if (audio) audio.remove();
+        delete activeCalls[call.peer];
       });
     }
 
@@ -257,8 +284,8 @@
         localAudioStream.getTracks().forEach(track => track.stop());
         localAudioStream = null;
       }
-      mediaCalls.forEach(call => call.close());
-      mediaCalls = [];
+      Object.values(activeCalls).forEach(call => call.close());
+      activeCalls = {};
       document.getElementById('audio-container').innerHTML = '';
       document.getElementById('vc-bar').style.display = 'none';
       currentVc = null;
@@ -268,8 +295,7 @@
       const params = new URLSearchParams(window.location.search);
       const peerId = params.get('peer');
       if (peerId) {
-        const conn = peer.connect(peerId);
-        setupDataConn(conn);
+        connectToPeer(peerId);
       }
     }
   </script>
