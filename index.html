@@ -9,6 +9,19 @@
     <!-- Supabase Core Client Library SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+
+        .maintenance-banner {
+            background-color: #d9534f; /* Solid red color */
+            color: white;
+            text-align: center;
+            padding: 15px 10px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        
         /* Smooth glowing animation for the active indicators */
         @keyframes pulse-glow {
             0%, 100% { transform: scale(1); opacity: 1; }
@@ -213,5 +226,9 @@
         // Boot execution thread
         initUser();
     </script>
+    
+    <div class="maintenance-banner">
+        FIXING BUG RN, COME BACK LATER.
+    </div>
 </body>
 </html>
