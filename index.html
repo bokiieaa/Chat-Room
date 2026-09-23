@@ -3,40 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Static Public Chatroom</title>
-    <!-- Tailwind CSS for styling layout elements -->
+    <title>Global Public Chatroom</title>
+    <!-- Modern Tailwind CSS v4 Engine -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Supabase JS CDN Library for database operations -->
+    <!-- Supabase Core Client Library SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Smooth glowing animation for the active indicators */
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+        .live-dot { animation: pulse-glow 2s infinite ease-in-out; }
+        
+        /* Custom styled minimalist scrollbar */
+        #chat-box::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); }
+        #chat-box::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 9999px; }
+        #chat-box::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.8); }
+    </style>
 </head>
-<body class="bg-gray-100 h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col items-center justify-center p-3 sm:p-6 antialiased font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
 
-    <div class="w-full max-w-lg bg-white rounded-lg shadow-md flex flex-col h-[80vh]">
-        <!-- Header -->
-        <div class="p-4 bg-blue-600 text-white font-bold rounded-t-lg flex justify-between items-center">
-            <span>Public Chatroom</span>
-            <span id="user-display" class="text-xs bg-blue-700 px-2 py-1 rounded"></span>
+    <!-- Main Container Container with Glassmorphism blur effects -->
+    <div class="w-full max-w-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl flex flex-col h-[85vh] overflow-hidden">
+        
+        <!-- App Header Bar -->
+        <header class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between z-10">
+            <div class="flex items-center gap-3">
+                <div class="relative flex h-3 w-3">
+                    <span class="live-dot absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Global Mesh Room</h1>
+                    <p class="text-[11px] text-slate-400 font-medium tracking-wide uppercase">Static Node Realtime Feed</p>
+                </div>
+            </div>
+            
+            <!-- User Status Pill -->
+            <div class="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 rounded-full px-3 py-1.5 shadow-inner">
+                <div id="avatar-circle" class="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-black uppercase text-white shadow-md"></div>
+                <span id="user-display" class="text-xs font-semibold text-slate-300 max-w-[120px] truncate">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Message Pipeline Screen Stream Container -->
+        <div id="chat-box" class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-slate-950/20 shadow-inner">
+            <div class="h-full w-full flex flex-col items-center justify-center space-y-3">
+                <div class="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-400 rounded-full animate-spin"></div>
+                <p class="text-xs text-slate-400 font-medium tracking-wide animate-pulse">Syncing secure transaction logs...</p>
+            </div>
         </div>
 
-        <!-- Chat History Window -->
-        <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50 text-sm">
-            <p class="text-gray-400 text-center italic">Loading chat history...</p>
-        </div>
-
-        <!-- Message Input Form -->
-        <form id="chat-form" class="p-4 border-t border-gray-200 flex gap-2">
-            <input type="text" id="msg-input" placeholder="Type a message..." required autocomplete="off"
-                   class="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Send</button>
-        </form>
+        <!-- Message Processing Action Bar Footer -->
+        <footer class="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800">
+            <form id="chat-form" class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all duration-300">
+                <input type="text" id="msg-input" placeholder="Broadcasting a safe encrypted packet..." required autocomplete="off" max="500"
+                       class="flex-1 bg-transparent border-0 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-0">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all duration-200 cursor-pointer">
+                    Send
+                </button>
+            </form>
+        </footer>
     </div>
 
     <script>
         // CONFIGURATION: Replace with your actual project connection details
         const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndteHlueHhicHh6ZmFocWFuZm90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDA5MjMsImV4cCI6MjEwNTcxNjkyM30.qlSD7EjNEMQrjLoem81ewLln9l2ASpubwqdbkaT4v0s";
+        const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
         
-        // Initialize the client connection mapping
+        // Initialize the cloud gateway connection layer mapping
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUsername = "";
@@ -46,28 +83,30 @@
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
         const userDisplay = document.getElementById('user-display');
+        const avatarCircle = document.getElementById('avatar-circle');
 
         // 1. Initial Prompt Setup & Secure IP Identifier Request
         async function initUser() {
             // Prompt for identity
-            currentUsername = prompt("Enter your username:") || "Anonymous_" + Math.floor(Math.random() * 1000);
-            userDisplay.textContent = `As: ${currentUsername}`;
+            currentUsername = prompt("Enter public chat handle:") || "Anon_" + Math.floor(Math.random() * 900 + 100);
+            userDisplay.textContent = currentUsername;
+            avatarCircle.textContent = currentUsername.charAt(0);
 
             // Fetch visitor public IP safely from a free external API endpoint
             try {
-                const response = await fetch('https://ipify.org');
+                const response = await fetch('https://api.ipify.org?format=json');
                 const data = await response.json();
                 currentIp = data.ip;
             } catch (err) {
-                console.error("IP Logging service error: ", err);
+                console.warn("Public route tracer tracking blocked. Falling back to default proxy payload.", err);
             }
 
-            // Sync state and bootstrap view
+            // Sync state and bootstrap pipeline view
             loadHistory();
             listenForNewMessages();
         }
 
-        // 2. Fetch the latest historical chat timeline records from Postgres
+        // 2. Fetch historical layout records from Postgres cluster data layer
         async function loadHistory() {
             const { data, error } = await supabase
                 .from('chat_messages')
@@ -76,29 +115,54 @@
                 .limit(50);
 
             if (error) {
-                chatBox.innerHTML = `<p class="text-red-500 text-center">Error fetching remote logs.</p>`;
+                chatBox.innerHTML = `
+                    <div class="h-full w-full flex flex-col items-center justify-center text-center p-6">
+                        <div class="text-rose-500/20 text-4xl mb-2">⚠️</div>
+                        <p class="text-sm font-semibold text-rose-400">Node Cluster Failure</p>
+                        <p class="text-xs text-slate-500 max-w-xs mt-1">${error.message}</p>
+                    </div>`;
                 return;
             }
 
-            chatBox.innerHTML = ''; // Wipe loading placeholder
-            data.forEach(msg => appendMessage(msg));
+            chatBox.innerHTML = ''; // Wipe loading placeholder skeleton view
+            if(data.length === 0) {
+                chatBox.innerHTML = `
+                    <div class="h-full w-full flex flex-col items-center justify-center text-center p-6">
+                        <p class="text-xs font-medium text-slate-500 tracking-wide uppercase">No communication history packets found.</p>
+                        <p class="text-[11px] text-slate-600 mt-0.5">Be the first to transmit a message string broadcast.</p>
+                    </div>`;
+            } else {
+                data.forEach(msg => appendMessage(msg));
+            }
             scrollToBottom();
         }
 
-        // 3. UI DOM Rendering Engine Component
+        // 3. UI DOM Rendering Component Block
         function appendMessage(msg) {
+            // Remove empty slate placeholder if this is the first message arriving
+            if (chatBox.querySelector('.uppercase')) { chatBox.innerHTML = ''; }
+
             const msgEl = document.createElement('div');
-            msgEl.className = "p-2 rounded bg-white shadow-xs border border-gray-100";
+            const isMe = msg.username === currentUsername;
             
-            // Generate simple localized timeline tag format
+            // Format time accurately
             const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
+            msgEl.className = "flex gap-3 items-start animate-fade-in group";
             msgEl.innerHTML = `
-                <div class="flex justify-between items-baseline mb-1">
-                    <span class="font-semibold text-blue-700">${escapeHTML(msg.username)}</span>
-                    <span class="text-[10px] text-gray-400 font-mono">IP: ${escapeHTML(msg.ip_address)} | ${time}</span>
+                <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold uppercase tracking-wider text-slate-200 border select-none ${isMe ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-slate-800/80 border-slate-700/60'}">
+                    ${escapeHTML(msg.username.charAt(0))}
                 </div>
-                <p class="text-gray-700 break-words">${escapeHTML(msg.message)}</p>
+                <div class="flex-1 min-w-0 bg-slate-900/40 border border-slate-800/80 rounded-xl px-4 py-3 shadow-sm hover:border-slate-700/50 transition-colors duration-200">
+                    <div class="flex flex-wrap justify-between items-center gap-x-2 gap-y-0.5 mb-1.5">
+                        <span class="text-xs font-semibold text-slate-200 truncate ${isMe ? 'text-indigo-400' : 'text-slate-300'}">${escapeHTML(msg.username)}</span>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono tracking-tight">
+                            <span class="bg-slate-950 px-1.5 py-0.5 border border-slate-800/60 rounded text-slate-400 group-hover:text-indigo-400 transition-colors duration-200">IP: ${escapeHTML(msg.ip_address)}</span>
+                            <span>${time}</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(msg.message)}</p>
+                </div>
             `;
             chatBox.appendChild(msgEl);
         }
@@ -109,7 +173,7 @@
             const messageText = msgInput.value.trim();
             if (!messageText) return;
 
-            msgInput.value = ''; // Clean input immediately for UX snappiness
+            msgInput.value = ''; // Clean buffer immediately for instantaneous client responsive feedback feel
 
             const { error } = await supabase
                 .from('chat_messages')
@@ -119,10 +183,10 @@
                     ip_address: currentIp 
                 }]);
 
-            if (error) alert("Write command rejected: " + error.message);
+            if (error) alert("Write transaction rejected by gateway: " + error.message);
         });
 
-        // 5. Connect live PostgreSQL real-time tracking hooks
+        // 5. Connect live PostgreSQL transaction stream subscription hooks
         function listenForNewMessages() {
             supabase
                 .channel('public:chat_messages')
@@ -133,11 +197,11 @@
                 .subscribe();
         }
 
-        // Utilities
+        // System Utility Helpers
         function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
         function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
 
-        // Start initialization routine
+        // Trigger initialization workflow runtime thread
         initUser();
     </script>
 </body>
