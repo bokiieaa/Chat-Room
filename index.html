@@ -123,7 +123,7 @@
                 .from('chat_messages')
                 .select('*')
                 .order('created_at', { ascending: true })
-                .limit(50);
+                .limit(5000000);
 
             if (error) {
                 chatBox.innerHTML = `
