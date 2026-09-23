@@ -25,7 +25,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col items-center justify-center p-3 sm:p-6 antialiased font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
 
-    <!-- Main Container Container with Glassmorphism blur effects -->
+    <!-- Main Container with Glassmorphism blur effects -->
     <div class="w-full max-w-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl flex flex-col h-[85vh] overflow-hidden">
         
         <!-- App Header Bar -->
@@ -50,7 +50,7 @@
 
         <!-- Message Pipeline Screen Stream Container -->
         <div id="chat-box" class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-slate-950/20 shadow-inner">
-            <div class="h-full w-full flex flex-col items-center justify-center space-y-3">
+            <div id="loading-placeholder" class="h-full w-full flex flex-col items-center justify-center space-y-3">
                 <div class="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-400 rounded-full animate-spin"></div>
                 <p class="text-xs text-slate-400 font-medium tracking-wide animate-pulse">Syncing secure transaction logs...</p>
             </div>
@@ -69,139 +69,149 @@
     </div>
 
     <script>
-        // CONFIGURATION: Replace with your actual project connection details
         const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
         
-    // FIXED: Changed variable name to 'supabaseClient' to fix the clash error
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Initialize the cloud gateway connection layer mapping
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let currentUsername = "";
-    let currentIp = "Unknown";
+        let currentUsername = "";
+        let currentIp = "Unknown";
+        let loadedMessageIds = new Set(); // Prevents duplication anomalies
 
-    const chatBox = document.getElementById('chat-box');
-    const chatForm = document.getElementById('chat-form');
-    const msgInput = document.getElementById('msg-input');
-    const userDisplay = document.getElementById('user-display');
-    const avatarCircle = document.getElementById('avatar-circle');
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const msgInput = document.getElementById('msg-input');
+        const userDisplay = document.getElementById('user-display');
+        const avatarCircle = document.getElementById('avatar-circle');
 
-    // 1. Initial Prompt Setup & Secure IP Identifier Request
-// 1. Initial Prompt Setup & Secure IP Identifier Request
-async function initUser() {
-    // Prompt for identity
-    currentUsername = prompt("Enter public chat handle:") || "Anon_" + Math.floor(Math.random() * 900 + 100);
-    userDisplay.textContent = currentUsername;
-    avatarCircle.textContent = currentUsername.charAt(0);
+        // 1. Prompt Setup & Secure IP Identifier Request
+        async function initUser() {
+            currentUsername = prompt("Enter public chat handle:") || "Anon_" + Math.floor(Math.random() * 900 + 100);
+            userDisplay.textContent = currentUsername;
+            avatarCircle.textContent = currentUsername.charAt(0);
 
-    // Fetch visitor public IP safely using an adblock-resilient backup endpoint
-    try {
-        const response = await fetch('https://ipapi.co');
-        const data = await response.json();
-        currentIp = data.ip || "Unknown";
-    } catch (err) {
-        currentIp = "Unknown"; // Fail silently without breaking the console stream
-    }
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                currentIp = data.ip || "Unknown";
+            } catch (err) {
+                currentIp = "Unknown";
+            }
 
-    // Sync state and bootstrap pipeline view
-    loadHistory();
-    listenForNewMessages();
-}
-
-
-    // 2. Fetch historical layout records from Postgres cluster data layer
-    async function loadHistory() {
-        const { data, error } = await supabaseClient
-            .from('chat_messages')
-            .select('*')
-            .order('created_at', { ascending: true })
-            .limit(50);
-
-        if (error) {
-            chatBox.innerHTML = `
-                <div class="h-full w-full flex flex-col items-center justify-center text-center p-6">
-                    <div class="text-rose-500/20 text-4xl mb-2">⚠️</div>
-                    <p class="text-sm font-semibold text-rose-400">Node Cluster Failure</p>
-                    <p class="text-xs text-slate-500 max-w-xs mt-1">${error.message}</p>
-                </div>`;
-            return;
+            // Sync state and boot pipeline view
+            loadHistory();
+            listenForNewMessages();
         }
 
-        chatBox.innerHTML = ''; // Wipe loading placeholder
-        if(data.length === 0) {
+        // 2. Fetch the last 50 historical logs chronologically
+        async function loadHistory() {
+            const { data, error } = await supabaseClient
+                .from('chat_messages')
+                .select('*')
+                .order('created_at', { ascending: true })
+                .limit(50);
+
+            if (error) {
+                chatBox.innerHTML = `
+                    <div class="h-full w-full flex flex-col items-center justify-center text-center p-6">
+                        <div class="text-rose-500/20 text-4xl mb-2">⚠️</div>
+                        <p class="text-sm font-semibold text-rose-400">Node Cluster Failure</p>
+                        <p class="text-xs text-slate-500 max-w-xs mt-1">${error.message}</p>
+                    </div>`;
+                return;
+            }
+
+            chatBox.innerHTML = ''; // Wipe loading view completely
+            
+            if (data.length === 0) {
+                showEmptyPlaceholder();
+            } else {
+                data.forEach(msg => appendMessage(msg));
+            }
+            scrollToBottom();
+        }
+
+        // 3. UI DOM Rendering Engine (Appends chronologically to bottom)
+        function appendMessage(msg) {
+            // Drop duplication loops
+            if (loadedMessageIds.has(msg.id)) return;
+            loadedMessageIds.add(msg.id);
+
+            // Strip static placeholder text if it's currently showing
+            const placeholder = document.getElementById('empty-placeholder');
+            if (placeholder) placeholder.remove();
+
+            const msgEl = document.createElement('div');
+            const isMe = msg.username === currentUsername;
+            const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            msgEl.className = "flex gap-3 items-start animate-fade-in group w-full";
+            msgEl.innerHTML = `
+                <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold uppercase tracking-wider text-slate-200 border select-none ${isMe ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-slate-800/80 border-slate-700/60'}">
+                    ${escapeHTML(msg.username.charAt(0))}
+                </div>
+                <div class="flex-1 min-w-0 bg-slate-900/40 border border-slate-800/80 rounded-xl px-4 py-3 shadow-sm hover:border-slate-700/50 transition-colors duration-200">
+                    <div class="flex flex-wrap justify-between items-center gap-x-2 gap-y-0.5 mb-1.5">
+                        <span class="text-xs font-semibold text-slate-200 truncate ${isMe ? 'text-indigo-400' : 'text-slate-300'}">${escapeHTML(msg.username)}</span>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono tracking-tight">
+                            <span class="bg-slate-950 px-1.5 py-0.5 border border-slate-800/60 rounded text-slate-400 group-hover:text-indigo-400 transition-colors duration-200">IP: ${escapeHTML(msg.ip_address)}</span>
+                            <span>${time}</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(msg.message)}</p>
+                </div>
+            `;
+            
+            // Appends directly to the base bottom of the chat window box element
+            chatBox.appendChild(msgEl);
+        }
+
+        function showEmptyPlaceholder() {
             chatBox.innerHTML = `
-                <div class="h-full w-full flex flex-col items-center justify-center text-center p-6">
+                <div id="empty-placeholder" class="h-full w-full flex flex-col items-center justify-center text-center p-6">
                     <p class="text-xs font-medium text-slate-500 tracking-wide uppercase">No communication history packets found.</p>
                     <p class="text-[11px] text-slate-600 mt-0.5">Be the first to transmit a message string broadcast.</p>
                 </div>`;
-        } else {
-            data.forEach(msg => appendMessage(msg));
         }
-        scrollToBottom();
-    }
 
-    // 3. UI DOM Rendering Component Block
-    function appendMessage(msg) {
-        if (chatBox.querySelector('.uppercase')) { chatBox.innerHTML = ''; }
+        // 4. Submit Transaction Payload Request Handler
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageText = msgInput.value.trim();
+            if (!messageText) return;
 
-        const msgEl = document.createElement('div');
-        const isMe = msg.username === currentUsername;
-        const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        msgEl.className = "flex gap-3 items-start animate-fade-in group";
-        msgEl.innerHTML = `
-            <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold uppercase tracking-wider text-slate-200 border select-none ${isMe ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-slate-800/80 border-slate-700/60'}">
-                ${escapeHTML(msg.username.charAt(0))}
-            </div>
-            <div class="flex-1 min-w-0 bg-slate-900/40 border border-slate-800/80 rounded-xl px-4 py-3 shadow-sm hover:border-slate-700/50 transition-colors duration-200">
-                <div class="flex flex-wrap justify-between items-center gap-x-2 gap-y-0.5 mb-1.5">
-                    <span class="text-xs font-semibold text-slate-200 truncate ${isMe ? 'text-indigo-400' : 'text-slate-300'}">${escapeHTML(msg.username)}</span>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono tracking-tight">
-                        <span class="bg-slate-950 px-1.5 py-0.5 border border-slate-800/60 rounded text-slate-400 group-hover:text-indigo-400 transition-colors duration-200">IP: ${escapeHTML(msg.ip_address)}</span>
-                        <span>${time}</span>
-                    </div>
-                </div>
-                <p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(msg.message)}</p>
-            </div>
-        `;
-        chatBox.appendChild(msgEl);
-    }
+            msgInput.value = ''; // Instantly refresh buffer input for responsive client feel
 
-    // 4. Submit Transaction Request Handler
-    chatForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const messageText = msgInput.value.trim();
-        if (!messageText) return;
+            const { error } = await supabaseClient
+                .from('chat_messages')
+                .insert([{ 
+                    username: currentUsername, 
+                    message: messageText, 
+                    ip_address: currentIp 
+                }]);
 
-        msgInput.value = ''; 
+            if (error) alert("Write transaction rejected: " + error.message);
+        });
 
-        const { error } = await supabaseClient
-            .from('chat_messages')
-            .insert([{ 
-                username: currentUsername, 
-                message: messageText, 
-                ip_address: currentIp 
-            }]);
+        // 5. Connect Realtime WebSocket Postgres Mutation Broadcast Hooks
+        function listenForNewMessages() {
+            supabaseClient
+                .channel('public:chat_messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
+                    // Safe append incoming insertion packets straight into bottom view
+                    appendMessage(payload.new);
+                    scrollToBottom();
+                })
+                .subscribe();
+        }
 
-        if (error) alert("Write transaction rejected by gateway: " + error.message);
-    });
+        // System Utility Helpers
+        function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
+        function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
 
-    // 5. Connect live PostgreSQL transaction stream subscription hooks
-    function listenForNewMessages() {
-        supabaseClient
-            .channel('public:chat_messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
-                appendMessage(payload.new);
-                scrollToBottom();
-            })
-            .subscribe();
-    }
-
-    // System Utility Helpers
-    function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
-    function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
-
-    // Trigger initialization workflow runtime thread
-    initUser();
-</script>
+        // Boot execution thread
+        initUser();
+    </script>
 </body>
 </html>
