@@ -74,7 +74,7 @@
             <form id="chat-form" class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all duration-300">
                 <input type="text" id="msg-input" placeholder="Broadcasting a safe encrypted packet..." required autocomplete="off" max="500"
                        class="flex-1 bg-transparent border-0 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-0">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all duration-200 cursor-pointer">
+                <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed active:scale-95 text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all duration-200 cursor-pointer">
                     Send
                 </button>
             </form>
@@ -82,8 +82,8 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://wmxynxxbpxzfahqanfott.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMtt";
+        const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
         
         // Initialize the cloud gateway connection layer mapping
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -91,10 +91,12 @@
         let currentUsername = "";
         let currentIp = "Unknown";
         let loadedMessageIds = new Set(); // Prevents duplication anomalies
+        let lastSentTime = 0; // Cooldown tracking timestamp
 
         const chatBox = document.getElementById('chat-box');
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
+        const sendBtn = document.getElementById('send-btn');
         const userDisplay = document.getElementById('user-display');
         const avatarCircle = document.getElementById('avatar-circle');
 
@@ -191,10 +193,25 @@
         // 4. Submit Transaction Payload Request Handler
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const now = Date.now();
+            const cooldownMs = 5000;
+            const timeElapsed = now - lastSentTime;
+
+            if (timeElapsed < cooldownMs) {
+                const remainingSecs = Math.ceil((cooldownMs - timeElapsed) / 1000);
+                alert(`Please wait ${remainingSecs} second(s) before sending another message.`);
+                return;
+            }
+
             const messageText = msgInput.value.trim();
             if (!messageText) return;
 
+            lastSentTime = Date.now();
             msgInput.value = ''; // Instantly refresh buffer input for responsive client feel
+
+            // Start visual button cooldown timer
+            startCooldownTimer(5);
 
             const { error } = await supabaseClient
                 .from('chat_messages')
@@ -206,6 +223,24 @@
 
             if (error) alert("Write transaction rejected: " + error.message);
         });
+
+        // Cooldown timer UI helper function
+        function startCooldownTimer(seconds) {
+            sendBtn.disabled = true;
+            let remaining = seconds;
+            sendBtn.textContent = `${remaining}s`;
+
+            const interval = setInterval(() => {
+                remaining--;
+                if (remaining > 0) {
+                    sendBtn.textContent = `${remaining}s`;
+                } else {
+                    clearInterval(interval);
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = 'Send';
+                }
+            }, 1000);
+        }
 
         // 5. Connect Realtime WebSocket Postgres Mutation Broadcast Hooks
         function listenForNewMessages() {
@@ -227,8 +262,8 @@
         initUser();
     </script>
     
-    <div class="maintenance-banner">
+    <!--<div class="maintenance-banner">
         FUCK OFF IM ADDING A COOLDOWN
-    </div> 
+    </div>-->
 </body>
 </html>
