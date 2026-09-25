@@ -106,13 +106,15 @@
                 'nigger', 'nigga', 'n i g g a', 'n i g g e r', 'fuck', 'fvck', 'rape', 'shit', 'jew', 'kys', 'kill ys', 'kill yours', 'kill yourself', 'kill your self',
             ];
             
-            let filteredText = text;
-            badWords.forEach(word => {
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                filteredText = filteredText.replace(regex, '######');
-            });
-            return filteredText;
-        }
+let filteredText = text;
+    badWords.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        filteredText = filteredText.replace(regex, (matchedWord) => {
+            return '#'.repeat(matchedWord.length); // Use '*' instead of '#' if preferred
+        });
+    });
+    return filteredText;
+}
 
         // 1. Prompt Setup & Secure IP Identifier Request
         async function initUser() {
