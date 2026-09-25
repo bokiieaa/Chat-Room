@@ -9,9 +9,8 @@
     <!-- Supabase Core Client Library SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-
         .maintenance-banner {
-            background-color: #d9534f; /* Solid red color */
+            background-color: #d9534f;
             color: white;
             text-align: center;
             padding: 15px 10px;
@@ -21,15 +20,12 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
-        
-        /* Smooth glowing animation for the active indicators */
         @keyframes pulse-glow {
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.2); opacity: 0.7; }
         }
         .live-dot { animation: pulse-glow 2s infinite ease-in-out; }
         
-        /* Custom styled minimalist scrollbar */
         #chat-box::-webkit-scrollbar { width: 6px; }
         #chat-box::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); }
         #chat-box::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 9999px; }
@@ -38,7 +34,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col items-center justify-center p-3 sm:p-6 antialiased font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
 
-    <!-- Main Container with Glassmorphism blur effects -->
+    <!-- Main Container -->
     <div class="w-full max-w-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl flex flex-col h-[85vh] overflow-hidden">
         
         <!-- App Header Bar -->
@@ -61,7 +57,7 @@
             </div>
         </header>
 
-        <!-- Message Pipeline Screen Stream Container -->
+        <!-- Message Pipeline Container -->
         <div id="chat-box" class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-slate-950/20 shadow-inner">
             <div id="loading-placeholder" class="h-full w-full flex flex-col items-center justify-center space-y-3">
                 <div class="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-400 rounded-full animate-spin"></div>
@@ -69,10 +65,16 @@
             </div>
         </div>
 
-        <!-- Message Processing Action Bar Footer -->
+        <!-- Message Processing Footer -->
         <footer class="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800">
             <form id="chat-form" class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all duration-300">
-                <input type="text" id="msg-input" placeholder="Broadcasting a safe encrypted packet..." required autocomplete="off" max="500"
+                <!-- Image Attachment Button -->
+                <label for="img-input" class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                    📷
+                </label>
+                <input type="file" id="img-input" accept="image/*" class="hidden">
+
+                <input type="text" id="msg-input" placeholder="Broadcasting a safe encrypted packet..." autocomplete="off" max="500"
                        class="flex-1 bg-transparent border-0 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-0">
                 <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed active:scale-95 text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all duration-200 cursor-pointer">
                     Send
@@ -85,38 +87,39 @@
         const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
         
-        // Initialize the cloud gateway connection layer mapping
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUsername = "";
         let currentIp = "Unknown";
-        let loadedMessageIds = new Set(); // Prevents duplication anomalies
-        let lastSentTime = 0; // Cooldown tracking timestamp
+        let loadedMessageIds = new Set();
+        let lastSentTime = 0;
 
         const chatBox = document.getElementById('chat-box');
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
+        const imgInput = document.getElementById('img-input');
         const sendBtn = document.getElementById('send-btn');
         const userDisplay = document.getElementById('user-display');
         const avatarCircle = document.getElementById('avatar-circle');
 
-        // Profanity filter helper
+        // Dynamic-length profanity filter helper
         function filterBadWords(text) {
+            if (!text) return "";
             const badWords = [
-                'nigger', 'nigga', 'n i g g a', 'n i g g e r', 'fuck', 'fvck', 'rape', 'shit', 'jew', 'kys', 'kill ys', 'kill yours', 'kill yourself', 'kill your self',
+                'fuck', 'shit', 'bitch', 'asshole', 'bastard', 
+                'cunt', 'dick', 'pussy', 'damn', 'crap'
             ];
             
-let filteredText = text;
-    badWords.forEach(word => {
-        const regex = new RegExp(`\\b${word}\\b`, 'gi');
-        filteredText = filteredText.replace(regex, (matchedWord) => {
-            return '#'.repeat(matchedWord.length); // Use '*' instead of '#' if preferred
-        });
-    });
-    return filteredText;
-}
+            let filteredText = text;
+            badWords.forEach(word => {
+                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                filteredText = filteredText.replace(regex, (matchedWord) => {
+                    return '#'.repeat(matchedWord.length);
+                });
+            });
+            return filteredText;
+        }
 
-        // 1. Prompt Setup & Secure IP Identifier Request
         async function initUser() {
             let inputUsername = prompt("Enter public chat handle:") || "anonymous_" + Math.floor(Math.random() * 9000 + 1000);
             currentUsername = filterBadWords(inputUsername);
@@ -131,12 +134,10 @@ let filteredText = text;
                 currentIp = "Unknown";
             }
 
-            // Sync state and boot pipeline view
             loadHistory();
             listenForNewMessages();
         }
 
-        // 2. Fetch the last 50 historical logs chronologically
         async function loadHistory() {
             const { data, error } = await supabaseClient
                 .from('chat_messages')
@@ -154,7 +155,7 @@ let filteredText = text;
                 return;
             }
 
-            chatBox.innerHTML = ''; // Wipe loading view completely
+            chatBox.innerHTML = '';
             
             if (data.length === 0) {
                 showEmptyPlaceholder();
@@ -164,23 +165,29 @@ let filteredText = text;
             scrollToBottom();
         }
 
-        // 3. UI DOM Rendering Engine (Appends chronologically to bottom)
         function appendMessage(msg) {
-            // Drop duplication loops
             if (loadedMessageIds.has(msg.id)) return;
             loadedMessageIds.add(msg.id);
 
-            // Strip static placeholder text if it's currently showing
             const placeholder = document.getElementById('empty-placeholder');
             if (placeholder) placeholder.remove();
 
             const cleanUsername = filterBadWords(msg.username);
-            const cleanMessage = filterBadWords(msg.message);
+            const isImage = msg.message.startsWith('data:image/');
+            const cleanMessage = isImage ? msg.message : filterBadWords(msg.message);
 
             const msgEl = document.createElement('div');
             const isMe = cleanUsername === currentUsername;
             const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
+            // Generate message body content (Text vs Image)
+            let contentHTML = '';
+            if (isImage) {
+                contentHTML = `<img src="${cleanMessage}" alt="Uploaded image" class="max-w-full max-h-80 rounded-lg mt-1 border border-slate-700/60 object-contain" />`;
+            } else {
+                contentHTML = `<p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(cleanMessage)}</p>`;
+            }
+
             msgEl.className = "flex gap-3 items-start animate-fade-in group w-full";
             msgEl.innerHTML = `
                 <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold uppercase tracking-wider text-slate-200 border select-none ${isMe ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-slate-800/80 border-slate-700/60'}">
@@ -194,12 +201,12 @@ let filteredText = text;
                             <span>${time}</span>
                         </div>
                     </div>
-                    <p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(cleanMessage)}</p>
+                    ${contentHTML}
                 </div>
             `;
             
-            // Appends directly to the base bottom of the chat window box element
             chatBox.appendChild(msgEl);
+            scrollToBottom();
         }
 
         function showEmptyPlaceholder() {
@@ -210,7 +217,16 @@ let filteredText = text;
                 </div>`;
         }
 
-        // 4. Submit Transaction Payload Request Handler
+        // Helper to convert Image File to Base64 String
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -224,29 +240,40 @@ let filteredText = text;
                 return;
             }
 
-            const messageText = msgInput.value.trim();
-            if (!messageText) return;
+            let messagePayload = msgInput.value.trim();
+            const imageFile = imgInput.files[0];
 
-            const filteredMessage = filterBadWords(messageText);
+            if (!messagePayload && !imageFile) return;
+
+            // Process image file if one was selected
+            if (imageFile) {
+                try {
+                    messagePayload = await fileToBase64(imageFile);
+                } catch (err) {
+                    alert("Failed to process image file.");
+                    return;
+                }
+            } else {
+                messagePayload = filterBadWords(messagePayload);
+            }
 
             lastSentTime = Date.now();
-            msgInput.value = ''; // Instantly refresh buffer input for responsive client feel
+            msgInput.value = '';
+            imgInput.value = ''; // Clear image input after sending
 
-            // Start visual button cooldown timer
             startCooldownTimer(5);
 
             const { error } = await supabaseClient
                 .from('chat_messages')
                 .insert([{ 
                     username: currentUsername, 
-                    message: filteredMessage, 
+                    message: messagePayload, 
                     ip_address: currentIp 
                 }]);
 
             if (error) alert("Write transaction rejected: " + error.message);
         });
 
-        // Cooldown timer UI helper function
         function startCooldownTimer(seconds) {
             sendBtn.disabled = true;
             let remaining = seconds;
@@ -264,23 +291,18 @@ let filteredText = text;
             }, 1000);
         }
 
-        // 5. Connect Realtime WebSocket Postgres Mutation Broadcast Hooks
         function listenForNewMessages() {
             supabaseClient
                 .channel('public:chat_messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
-                    // Safe append incoming insertion packets straight into bottom view
                     appendMessage(payload.new);
-                    scrollToBottom();
                 })
                 .subscribe();
         }
 
-        // System Utility Helpers
         function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
         function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
 
-        // Boot execution thread
         initUser();
     </script>
 </body>
