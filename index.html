@@ -1,366 +1,547 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mesh Chat</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesh Chat - Realtime Multi-Channel & Voice Call</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        #chat-box::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        #chat-box::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
+        #chat-box::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.8); }
+    </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased select-none">
 
-  <!-- AUTH SECTION -->
-  <div id="authContainer" class="flex-1 flex items-center justify-center p-4">
-    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700">
-      <h1 class="text-3xl font-bold text-center mb-6 text-indigo-400">💬 Mesh Chat</h1>
-      <div id="authError" class="hidden mb-4 p-3 bg-red-900/50 border border-red-500 text-red-200 rounded text-sm text-center"></div>
-      <form id="authForm" onsubmit="return false;" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium mb-1 text-gray-300">Username</label>
-          <input type="text" id="authUsername" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-indigo-500" placeholder="e.g. alex" />
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
+            <div class="text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 mb-3 border border-indigo-500/30">
+                    <i class="fa-solid fa-cubes text-xl"></i>
+                </div>
+                <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Mesh Network Access</h2>
+                <p class="text-xs text-slate-400 mt-1" id="auth-subtitle">Sign in or register a new account to continue</p>
+            </div>
+            
+            <form id="auth-form" onsubmit="return false;" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Username</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-xs">@</span>
+                        <input type="text" id="auth-username" required placeholder="username" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors">
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="button" id="login-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-lg shadow-indigo-600/20">LOG IN</button>
+                    <button type="button" id="signup-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SIGN UP</button>
+                </div>
+            </form>
+
+            <div id="auth-error" class="p-3 bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400 rounded-lg hidden text-center font-medium"></div>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-1 text-gray-300">Password</label>
-          <input type="password" id="authPassword" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-indigo-500" placeholder="••••••••" />
-        </div>
-        <div class="flex gap-4 pt-2">
-          <button id="loginBtn" onclick="handleAuth('login')" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded transition">Log In</button>
-          <button id="signupBtn" onclick="handleAuth('signup')" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded transition">Sign Up</button>
-        </div>
-      </form>
     </div>
-  </div>
 
-  <!-- MAIN CHAT APP (Hidden until logged in) -->
-  <div id="appContainer" class="hidden flex-1 flex overflow-hidden">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
-      <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-        <span id="currentUserDisplay" class="font-bold text-indigo-400 truncate"></span>
-        <button onclick="logout()" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-gray-300">Logout</button>
-      </div>
-      <div class="p-4 flex-1 overflow-y-auto">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Channels</h2>
-        <nav class="space-y-1">
-          <button onclick="switchChannel('general')" class="channel-btn w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-700 active-channel" data-channel="general"># general</button>
-          <button onclick="switchChannel('dev-talk')" class="channel-btn w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-700" data-channel="dev-talk"># dev-talk</button>
-          <button onclick="switchChannel('off-topic')" class="channel-btn w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-700" data-channel="off-topic"># off-topic</button>
-        </nav>
-      </div>
-    </aside>
-
-    <!-- Main Chat Window -->
-    <main class="flex-1 flex flex-col bg-gray-900">
-      <!-- Chat Header -->
-      <header class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-        <h2 id="channelHeader" class="text-lg font-bold text-gray-100"># general</h2>
-        <button id="callBtn" onclick="startCall()" class="bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded flex items-center gap-2 transition">
-          📞 Start Audio Call
-        </button>
-      </header>
-
-      <!-- Active Call Bar (Hidden by default) -->
-      <div id="callBar" class="hidden bg-indigo-900/50 border-b border-indigo-500 p-3 flex items-center justify-between">
-        <span id="callStatus" class="text-sm font-medium text-indigo-200">Connecting call...</span>
-        <button onclick="endCall()" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded">End Call</button>
-      </div>
-
-      <!-- Messages Stream -->
-      <div id="messagesList" class="flex-1 p-4 overflow-y-auto space-y-4"></div>
-
-      <!-- Reply Banner -->
-      <div id="replyBanner" class="hidden px-4 py-2 bg-gray-800 border-t border-gray-700 flex justify-between items-center text-xs text-indigo-300">
-        <span id="replyText">Replying to...</span>
-        <button onclick="cancelReply()" class="text-gray-400 hover:text-white">✕</button>
-      </div>
-
-      <!-- Message Input Form -->
-      <form id="messageForm" onsubmit="sendMessage(event)" class="p-4 border-t border-gray-700 bg-gray-800 flex gap-2">
-        <input type="text" id="messageInput" required class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-indigo-500 text-white" placeholder="Message #general..." />
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2 rounded transition">Send</button>
-      </form>
-    </main>
-  </div>
-
-  <audio id="remoteAudio" autoplay></audio>
-
-  <script>
-    // --- SUPABASE CONFIGURATION ---
-    const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // App State
-    let currentUser = null;
-    let currentChannel = 'general';
-    let replyingToId = null;
-    let messagesSubscription = null;
-    let callSubscription = null;
-
-    // WebRTC State
-    let peerConnection = null;
-    let localStream = null;
-    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-    // --- HELPER: SHA-256 HASHING ---
-    async function hashPassword(password) {
-      const msgUint8 = new TextEncoder().encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    // --- AUTHENTICATION ---
-    async function handleAuth(type) {
-      const username = document.getElementById('authUsername').value.trim();
-      const password = document.getElementById('authPassword').value;
-      const errorEl = document.getElementById('authError');
-      errorEl.classList.add('hidden');
-
-      if (!username || !password) return;
-
-      const passwordHash = await hashPassword(password);
-
-      try {
-        if (type === 'signup') {
-          const userId = crypto.randomUUID();
-          const { data, error } = await supabase.from('profiles').insert([
-            { id: userId, username, password_hash: passwordHash }
-          ]).select().single();
-
-          if (error) throw error;
-          currentUser = data;
-        } else {
-          const { data, error } = await supabase.from('profiles')
-            .select('*')
-            .eq('username', username)
-            .eq('password_hash', passwordHash)
-            .single();
-
-          if (error || !data) throw new Error('Invalid username or password');
-          currentUser = data;
-        }
-
-        initApp();
-      } catch (err) {
-        errorEl.textContent = err.message || 'Authentication failed';
-        errorEl.classList.remove('hidden');
-      }
-    }
-
-    function initApp() {
-      document.getElementById('authContainer').classList.add('hidden');
-      document.getElementById('appContainer').classList.remove('hidden');
-      document.getElementById('currentUserDisplay').textContent = `@${currentUser.username}`;
-      
-      setupCallListener();
-      switchChannel('general');
-    }
-
-    function logout() {
-      if (peerConnection) endCall();
-      location.reload();
-    }
-
-    // --- CHAT FUNCTIONS ---
-    async function switchChannel(channel) {
-      currentChannel = channel;
-      document.getElementById('channelHeader').textContent = `# ${channel}`;
-      document.getElementById('messageInput').placeholder = `Message #${channel}...`;
-
-      document.querySelectorAll('.channel-btn').forEach(btn => {
-        if (btn.dataset.channel === channel) {
-          btn.classList.add('bg-gray-700', 'font-bold');
-        } else {
-          btn.classList.remove('bg-gray-700', 'font-bold');
-        }
-      });
-
-      fetchMessages();
-      subscribeToMessages();
-    }
-
-    async function fetchMessages() {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('channel_id', currentChannel)
-        .order('created_at', { ascending: true });
-
-      if (!error) renderMessages(data || []);
-    }
-
-    function subscribeToMessages() {
-      if (messagesSubscription) supabase.removeChannel(messagesSubscription);
-
-      messagesSubscription = supabase
-        .channel(`messages_${currentChannel}`)
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `channel_id=eq.${currentChannel}`
-        }, payload => {
-          appendMessage(payload.new);
-        })
-        .subscribe();
-    }
-
-    function renderMessages(messages) {
-      const container = document.getElementById('messagesList');
-      container.innerHTML = '';
-      messages.forEach(msg => appendMessage(msg));
-      container.scrollTop = container.scrollHeight;
-    }
-
-    function appendMessage(msg) {
-      const container = document.getElementById('messagesList');
-      const msgEl = document.createElement('div');
-      msgEl.className = 'bg-gray-800 p-3 rounded-lg border border-gray-700 relative group';
-      
-      const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      msgEl.innerHTML = `
-        <div class="flex items-center justify-between mb-1">
-          <span class="font-bold text-indigo-400 text-sm">${escapeHtml(msg.username)}</span>
-          <span class="text-xs text-gray-500">${time}</span>
+    <div id="call-bar" class="hidden bg-indigo-950/90 border-b border-indigo-500/40 px-6 py-2.5 flex items-center justify-between z-20 shadow-lg backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <span class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <div class="flex flex-col">
+                <span id="call-status" class="text-xs font-bold text-indigo-200">In Call...</span>
+                <span id="call-peer-id" class="text-[10px] text-indigo-300/70 font-mono">Peer connected</span>
+            </div>
         </div>
-        <p class="text-gray-200 text-sm">${escapeHtml(msg.message)}</p>
-        <button onclick="setReply(${msg.id}, '${escapeHtml(msg.username)}')" class="absolute top-2 right-2 text-xs text-gray-400 hover:text-indigo-300 opacity-0 group-hover:opacity-100 transition">Reply</button>
-      `;
+        <div class="flex items-center gap-3">
+            <button id="toggle-mic-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-colors cursor-pointer">
+                <i class="fa-solid fa-microphone mr-1.5"></i> Mute
+            </button>
+            <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-lg shadow-rose-600/20">
+                <i class="fa-solid fa-phone-slash mr-1.5"></i> End Call
+            </button>
+        </div>
+        <audio id="remote-audio" autoplay></audio>
+    </div>
 
-      container.appendChild(msgEl);
-      container.scrollTop = container.scrollHeight;
-    }
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-900 border-r border-slate-800/80 flex flex-col justify-between shrink-0 hidden md:flex">
+            <div class="p-4 space-y-6">
+                <!-- App Title -->
+                <div class="flex items-center gap-2.5 px-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-600/30">
+                        <i class="fa-solid fa-cubes"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-bold text-slate-100 tracking-wide">MESH CHAT</h1>
+                        <p class="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online
+                        </p>
+                    </div>
+                </div>
 
-    async function sendMessage(e) {
-      e.preventDefault();
-      const input = document.getElementById('messageInput');
-      const text = input.value.trim();
-      if (!text) return;
+                <!-- Channels List -->
+                <div>
+                    <h2 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 px-2">Channels</h2>
+                    <nav class="space-y-1" id="channel-list">
+                        <button data-channel="general" class="channel-btn w-full text-left px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-hashtag text-indigo-400"></i> general
+                        </button>
+                        <button data-channel="announcements" class="channel-btn w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-bullhorn text-slate-500"></i> announcements
+                        </button>
+                        <button data-channel="dev-talk" class="channel-btn w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-code text-slate-500"></i> dev-talk
+                        </button>
+                        <button data-channel="media" class="channel-btn w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-photo-film text-slate-500"></i> media
+                        </button>
+                        <button data-channel="off-topic" class="channel-btn w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-comments text-slate-500"></i> off-topic
+                        </button>
+                    </nav>
+                </div>
 
-      const payload = {
-        user_id: currentUser.id,
-        username: currentUser.username,
-        channel_id: currentChannel,
-        message: text,
-        reply_to_id: replyingToId
-      };
+                <!-- Direct P2P Call Box -->
+                <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800 space-y-2">
+                    <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-phone text-emerald-400 text-xs"></i> Direct Voice Call
+                    </h2>
+                    <div class="space-y-2">
+                        <input type="text" id="target-call-user" placeholder="Target Username..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors">
+                        <button id="start-call-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-headset"></i> Call User
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-      input.value = '';
-      cancelReply();
+            <!-- Profile Footer -->
+            <div class="p-3.5 border-t border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+                <div class="flex items-center gap-2.5 overflow-hidden">
+                    <div id="user-avatar" class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 text-white shadow-md">?</div>
+                    <div class="truncate">
+                        <div id="current-user-display" class="text-xs font-semibold text-slate-200 truncate">Guest</div>
+                        <div class="text-[10px] text-slate-500 font-mono">Authenticated</div>
+                    </div>
+                </div>
+                <button id="logout-btn" title="Sign Out" class="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                </button>
+            </div>
+        </aside>
 
-      await supabase.from('chat_messages').insert([payload]);
-    }
+        <!-- Main Chat Area -->
+        <main class="flex-1 flex flex-col bg-slate-950">
+            <!-- Channel Header -->
+            <header class="px-6 py-4 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-sm flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-hashtag text-indigo-400 text-sm"></i>
+                    <h1 id="active-channel-title" class="text-sm font-bold text-slate-100 tracking-wide">general</h1>
+                </div>
+            </header>
 
-    function setReply(id, username) {
-      replyingToId = id;
-      document.getElementById('replyText').textContent = `Replying to @${username}`;
-      document.getElementById('replyBanner').classList.remove('hidden');
-    }
+            <!-- Chat Message Feed -->
+            <div id="chat-box" class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-3.5"></div>
 
-    function cancelReply() {
-      replyingToId = null;
-      document.getElementById('replyBanner').classList.add('hidden');
-    }
+            <!-- Active Reply Preview Box -->
+            <div id="reply-preview" class="hidden bg-slate-900/90 border-t border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-slate-400">
+                <div class="flex items-center gap-2 truncate">
+                    <i class="fa-solid fa-reply text-indigo-400"></i>
+                    <span>Replying to <b id="reply-target-user" class="text-indigo-300"></b>: <span id="reply-target-text" class="italic text-slate-400 truncate max-w-sm inline-block align-bottom"></span></span>
+                </div>
+                <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-200 font-bold p-1">&times;</button>
+            </div>
 
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+            <!-- Input Bar -->
+            <footer class="p-4 bg-slate-900/60 border-t border-slate-800/80">
+                <form id="chat-form" class="flex items-center gap-2.5">
+                    <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-wider px-6 py-3 rounded-xl transition-colors cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center gap-2">
+                        <span>Send</span>
+                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                    </button>
+                </form>
+            </footer>
+        </main>
+    </div>
 
-    // --- WEBRTC SIGNALING & CALLING ---
-    function setupCallListener() {
-      callSubscription = supabase.channel(`call_signaling_${currentChannel}`, {
-        config: { broadcast: { self: false } }
-      });
+    <script>
+        // CONFIGURATION CONSTANTS
+        const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
 
-      callSubscription
-        .on('broadcast', { event: 'signal' }, payload => handleSignal(payload.payload))
-        .subscribe();
-    }
+        // Initialize Supabase Client
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function startCall() {
-      document.getElementById('callBar').classList.remove('hidden');
-      document.getElementById('callStatus').textContent = 'Calling channel...';
+        // Application State
+        let currentUser = null;
+        let activeChannel = 'general';
+        let activeReplyId = null;
+        
+        // WebRTC & Audio State
+        let peerConnection = null;
+        let localStream = null;
+        let signalingChannel = null;
+        let activeCallUser = null;
+        let isMicMuted = false;
 
-      peerConnection = new RTCPeerConnection(rtcConfig);
-      setupPeerEvents();
+        // Elements
+        const authModal = document.getElementById('auth-modal');
+        const authError = document.getElementById('auth-error');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const msgInput = document.getElementById('msg-input');
+        const replyPreview = document.getElementById('reply-preview');
 
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-
-      sendSignal({ type: 'offer', offer, sender: currentUser.username });
-    }
-
-    async function handleSignal(data) {
-      if (data.type === 'offer') {
-        if (!confirm(`Incoming call from @${data.sender}. Accept?`)) return;
-
-        document.getElementById('callBar').classList.remove('hidden');
-        document.getElementById('callStatus').textContent = `In call with @${data.sender}`;
-
-        peerConnection = new RTCPeerConnection(rtcConfig);
-        setupPeerEvents();
-
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-
-        sendSignal({ type: 'answer', answer });
-      } else if (data.type === 'answer' && peerConnection) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-        document.getElementById('callStatus').textContent = 'Connected';
-      } else if (data.type === 'candidate' && peerConnection) {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-      } else if (data.type === 'hangup') {
-        endCall(false);
-      }
-    }
-
-    function setupPeerEvents() {
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          sendSignal({ type: 'candidate', candidate: event.candidate });
+        // Hash helper using browser Web Crypto API
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
-      };
 
-      peerConnection.ontrack = (event) => {
-        const audioEl = document.getElementById('remoteAudio');
-        audioEl.srcObject = event.streams[0];
-      };
-    }
+        // Handle Signup
+        signupBtn.addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
 
-    function sendSignal(payload) {
-      callSubscription.send({
-        type: 'broadcast',
-        event: 'signal',
-        payload
-      });
-    }
+            if (!username || !password) return showAuthError("Username and password are required.");
+            if (password.length < 6) return showAuthError("Password must be at least 6 characters.");
 
-    function endCall(notifyPeer = true) {
-      if (notifyPeer && callSubscription) {
-        sendSignal({ type: 'hangup' });
-      }
+            const passwordHash = await hashPassword(password);
+            const userId = crypto.randomUUID();
 
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
+            // Insert into Supabase 'profiles' table
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .insert([{ id: userId, username, password_hash: passwordHash }])
+                .select()
+                .single();
 
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
+            if (error) {
+                if (error.code === '23505') {
+                    return showAuthError("Username is already taken. Please choose another.");
+                }
+                return showAuthError("Account creation failed: " + error.message);
+            }
 
-      document.getElementById('callBar').classList.add('hidden');
-    }
-  </script>
+            initAuthenticatedSession(data);
+        });
+
+        // Handle Login
+        loginBtn.addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (!username || !password) return showAuthError("Username and password are required.");
+
+            const passwordHash = await hashPassword(password);
+
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('username', username)
+                .maybeSingle();
+
+            if (error || !profile) {
+                return showAuthError("Account not found. Please sign up.");
+            }
+
+            if (profile.password_hash !== passwordHash) {
+                return showAuthError("Incorrect password. Please try again.");
+            }
+
+            initAuthenticatedSession(profile);
+        });
+
+        function showAuthError(msg) {
+            authError.textContent = msg;
+            authError.classList.remove('hidden');
+        }
+
+        function initAuthenticatedSession(userProfile) {
+            currentUser = { id: userProfile.id, username: userProfile.username };
+            document.getElementById('current-user-display').textContent = `@${userProfile.username}`;
+            document.getElementById('user-avatar').textContent = userProfile.username.charAt(0).toUpperCase();
+            authModal.classList.add('hidden');
+            
+            initSignalingChannel();
+            loadChannelMessages();
+            listenToRealtimeMessages();
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.reload();
+        });
+
+
+        document.querySelectorAll('.channel-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.channel-btn').forEach(b => {
+                    b.className = "channel-btn w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-all flex items-center gap-2";
+                });
+                btn.className = "channel-btn w-full text-left px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2 transition-all";
+                
+                activeChannel = btn.dataset.channel;
+                document.getElementById('active-channel-title').textContent = activeChannel;
+                loadChannelMessages();
+            });
+        });
+
+        async function loadChannelMessages() {
+            chatBox.innerHTML = '';
+            const { data, error } = await supabaseClient
+                .from('chat_messages')
+                .select('*')
+                .eq('channel_id', activeChannel)
+                .order('created_at', { ascending: true })
+                .limit(100);
+
+            if (data) data.forEach(msg => appendMessageUI(msg));
+        }
+
+        function appendMessageUI(msg) {
+            const msgEl = document.createElement('div');
+            msgEl.className = "p-3 bg-slate-900/60 border border-slate-800/80 rounded-xl space-y-1 relative group hover:border-slate-700/80 transition-colors";
+
+            let replyHeader = '';
+            if (msg.reply_to_id) {
+                replyHeader = `<div class="text-[10px] text-indigo-400 font-mono flex items-center gap-1"><i class="fa-solid fa-reply"></i> Replying to #${msg.reply_to_id}</div>`;
+            }
+
+            msgEl.innerHTML = `
+                ${replyHeader}
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-indigo-300">@${escapeHTML(msg.username)}</span>
+                    <span class="text-[10px] text-slate-500">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                </div>
+                <p class="text-xs text-slate-200 leading-relaxed font-normal">${escapeHTML(msg.message)}</p>
+                <button onclick="setReplyTarget(${msg.id}, '${escapeHTML(msg.username)}', '${escapeHTML(msg.message)}')" class="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-md transition-all cursor-pointer">
+                    <i class="fa-solid fa-reply mr-1"></i>Reply
+                </button>
+            `;
+            chatBox.appendChild(msgEl);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function setReplyTarget(id, username, text) {
+            activeReplyId = id;
+            document.getElementById('reply-target-user').textContent = `@${username}`;
+            document.getElementById('reply-target-text').textContent = text;
+            replyPreview.classList.remove('hidden');
+        }
+
+        document.getElementById('cancel-reply-btn').addEventListener('click', () => {
+            activeReplyId = null;
+            replyPreview.classList.add('hidden');
+        });
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = msgInput.value.trim();
+            if (!text || !currentUser) return;
+
+            const payload = {
+                user_id: currentUser.id,
+                username: currentUser.username,
+                channel_id: activeChannel,
+                message: text,
+                reply_to_id: activeReplyId
+            };
+
+            msgInput.value = '';
+            activeReplyId = null;
+            replyPreview.classList.add('hidden');
+
+            await supabaseClient.from('chat_messages').insert([payload]);
+        });
+
+        function listenToRealtimeMessages() {
+            supabaseClient
+                .channel('public:chat_messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
+                    if (payload.new.channel_id === activeChannel) {
+                        appendMessageUI(payload.new);
+                    }
+                }).subscribe();
+        }
+
+
+        function initSignalingChannel() {
+            signalingChannel = supabaseClient.channel(`signaling:${currentUser.username}`);
+            signalingChannel.on('broadcast', { event: 'signal' }, async ({ payload }) => {
+                if (payload.type === 'offer') handleIncomingOffer(payload);
+                else if (payload.type === 'answer') handleAnswer(payload);
+                else if (payload.type === 'ice-candidate') handleIceCandidate(payload);
+                else if (payload.type === 'end-call') resetCallUI();
+            }).subscribe();
+        }
+
+        document.getElementById('start-call-btn').addEventListener('click', async () => {
+            const targetUser = document.getElementById('target-call-user').value.trim();
+            if (!targetUser) return alert("Please enter a username to call.");
+            if (targetUser === currentUser.username) return alert("You cannot call yourself.");
+
+            activeCallUser = targetUser;
+            await setupPeerConnection(targetUser);
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+
+                sendSignal(targetUser, { type: 'offer', offer, from: currentUser.username });
+                updateCallUI(`Calling @${targetUser}...`, targetUser);
+            } catch (err) {
+                alert("Microphone access is required for voice calls: " + err.message);
+                resetCallUI();
+            }
+        });
+
+        async function handleIncomingOffer(payload) {
+            if (activeCallUser) return; // Busy
+            if (!confirm(`Incoming audio call from @${payload.from}. Accept?`)) {
+                sendSignal(payload.from, { type: 'end-call' });
+                return;
+            }
+
+            activeCallUser = payload.from;
+            await setupPeerConnection(payload.from);
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+
+                sendSignal(payload.from, { type: 'answer', answer });
+                updateCallUI(`Connected with @${payload.from}`, payload.from);
+            } catch (err) {
+                alert("Could not access microphone: " + err.message);
+                resetCallUI();
+            }
+        }
+
+        async function handleAnswer(payload) {
+            if (peerConnection && payload.answer) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+                document.getElementById('call-status').textContent = `Connected with @${activeCallUser}`;
+            }
+        }
+
+        async function handleIceCandidate(payload) {
+            if (peerConnection && payload.candidate) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+                } catch (e) {
+                    console.error("ICE Candidate Error:", e);
+                }
+            }
+        }
+
+        async function setupPeerConnection(targetUser) {
+            peerConnection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
+            });
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    sendSignal(targetUser, { type: 'ice-candidate', candidate: event.candidate });
+                }
+            };
+
+            peerConnection.ontrack = (event) => {
+                const remoteAudio = document.getElementById('remote-audio');
+                remoteAudio.srcObject = event.streams[0];
+            };
+
+            peerConnection.oniceconnectionstatechange = () => {
+                if (peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed') {
+                    resetCallUI();
+                }
+            };
+        }
+
+        function sendSignal(targetUsername, payload) {
+            supabaseClient.channel(`signaling:${targetUsername}`).send({
+                type: 'broadcast',
+                event: 'signal',
+                payload
+            });
+        }
+
+        function updateCallUI(statusText, peerUser) {
+            document.getElementById('call-bar').classList.remove('hidden');
+            document.getElementById('call-status').textContent = statusText;
+            document.getElementById('call-peer-id').textContent = `@${peerUser}`;
+        }
+
+        function resetCallUI() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+                localStream = null;
+            }
+            activeCallUser = null;
+            document.getElementById('call-bar').classList.add('hidden');
+        }
+
+        document.getElementById('end-call-btn').addEventListener('click', () => {
+            if (activeCallUser) sendSignal(activeCallUser, { type: 'end-call' });
+            resetCallUI();
+        });
+
+        document.getElementById('toggle-mic-btn').addEventListener('click', () => {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    isMicMuted = !audioTrack.enabled;
+                    document.getElementById('toggle-mic-btn').innerHTML = isMicMuted ?
+                        '<i class="fa-solid fa-microphone-slash mr-1.5 text-rose-400"></i> Unmute' :
+                        '<i class="fa-solid fa-microphone mr-1.5"></i> Mute';
+                }
+            }
+        });
+
+        function escapeHTML(str) { 
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); 
+        }
+    </script>
 </body>
 </html>
