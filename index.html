@@ -175,7 +175,7 @@
             let savedUsername = localStorage.getItem("chat_username");
 
             if (!savedUsername) {
-                let inputUsername = prompt("Enter public chat handle:") || "anonymous_" + Math.floor(Math.random() * 9000 + 1000);
+                let inputUsername = prompt("Enter ur username:") || "anonymous_" + Math.floor(Math.random() * 9000 + 1000);
                 savedUsername = filterBadWords(inputUsername);
                 localStorage.setItem("chat_username", savedUsername);
             }
