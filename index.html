@@ -9,9 +9,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        #chat-box::-webkit-scrollbar { width: 6px; }
-        #chat-box::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        #chat-box::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
+        #chat-box::-webkit-scrollbar, #updates-box::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track, #updates-box::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        #chat-box::-webkit-scrollbar-thumb, #updates-box::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased">
@@ -45,6 +45,21 @@
         </div>
     </div>
 
+    <!-- Incoming Call Overlay Dialog -->
+    <div id="incoming-call-modal" class="hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full text-center space-y-4 shadow-2xl animate-bounce">
+            <div class="w-16 h-16 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-full flex items-center justify-center mx-auto text-2xl font-black">📞</div>
+            <div>
+                <h3 id="incoming-caller-name" class="text-lg font-bold text-slate-100">User</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Incoming Voice Call...</p>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button id="decline-call-btn" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer">Decline</button>
+                <button id="accept-call-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer">Accept</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Active Call Bar -->
     <div id="call-bar" class="hidden bg-indigo-950/80 border-b border-indigo-500/30 px-4 py-2.5 flex items-center justify-between z-20 shrink-0">
         <div class="flex items-center gap-3 min-w-0">
@@ -70,10 +85,11 @@
                 </div>
 
                 <div>
-                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Channels</h2>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Channels & Feeds</h2>
                     <nav class="space-y-1" id="channel-list">
                         <button data-channel="general" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2"># general</button>
                         <button data-channel="announcements" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># announcements</button>
+                        <button data-channel="updates" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2">📢 updates</button>
                         <button data-channel="dev-talk" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># dev-talk</button>
                         <button data-channel="media" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># media</button>
                         <button data-channel="off-topic" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># off-topic</button>
@@ -106,15 +122,30 @@
             </div>
         </aside>
 
-        <!-- Chat Main Area -->
+        <!-- Chat / Updates Main Area -->
         <main class="flex-1 flex flex-col bg-slate-950 min-w-0 overflow-hidden">
             <header class="p-3 sm:p-4 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between shrink-0">
                 <h1 id="active-channel-title" class="text-sm font-bold text-slate-200 truncate"># general</h1>
             </header>
 
+            <!-- Regular Messages Feed Container -->
             <div id="chat-box" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0"></div>
 
-            <!-- Reply Banner (Constrained) -->
+            <!-- Dedicated Updates / System Log Container -->
+            <div id="updates-box" class="hidden flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0">
+                <div class="p-4 bg-indigo-950/30 border border-indigo-500/20 rounded-xl space-y-2">
+                    <div class="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                        <span>🚀 System Release Update</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Mesh Chat v2.4 initialized. Features WebRTC voice calling with incoming ringtone audio synthesizers, Supabase real-time message sync, and file attachments.
+                    </p>
+                    <span class="text-[10px] text-slate-500 block">System Log</span>
+                </div>
+                <div id="live-updates-list" class="space-y-3"></div>
+            </div>
+
+            <!-- Reply Banner -->
             <div id="reply-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-slate-400 shrink-0 min-w-0 gap-2">
                 <div class="truncate flex-1 min-w-0">
                     Replying to <b id="reply-target-user" class="text-indigo-400"></b>: "<span id="reply-target-text" class="italic truncate inline-block align-bottom max-w-[200px] sm:max-w-md"></span>"
@@ -122,13 +153,13 @@
                 <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
             </div>
 
-            <!-- Media Preview Banner (Constrained) -->
+            <!-- Media Preview Banner -->
             <div id="file-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-indigo-300 shrink-0 min-w-0 gap-2">
                 <span id="file-preview-name" class="truncate flex-1 min-w-0"></span>
                 <button id="cancel-file-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
             </div>
 
-            <footer class="p-3 sm:p-4 bg-slate-900/80 border-t border-slate-800 shrink-0">
+            <footer id="chat-footer" class="p-3 sm:p-4 bg-slate-900/80 border-t border-slate-800 shrink-0">
                 <form id="chat-form" class="flex items-center gap-2 min-w-0">
                     <label for="media-file-input" title="Attach Media or File" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors border border-slate-700 shrink-0 flex items-center justify-center">
                         📎
@@ -162,6 +193,7 @@
         let ringtoneAudio = null;
         let ringtoneInterval = null;
         let audioCtx = null;
+        let pendingOfferPayload = null;
 
         const rtcConfig = {
             iceServers: [
@@ -176,6 +208,9 @@
         const loginBtn = document.getElementById('login-btn');
         const signupBtn = document.getElementById('signup-btn');
         const chatBox = document.getElementById('chat-box');
+        const updatesBox = document.getElementById('updates-box');
+        const liveUpdatesList = document.getElementById('live-updates-list');
+        const chatFooter = document.getElementById('chat-footer');
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
         const replyPreview = document.getElementById('reply-preview');
@@ -184,7 +219,28 @@
         const filePreviewName = document.getElementById('file-preview-name');
         const dndToggle = document.getElementById('dnd-toggle');
 
-        // --- RINGTONE PLAYER WITH DETAILED LOGGING AND SYNTH FALLBACK ---
+        const incomingCallModal = document.getElementById('incoming-call-modal');
+        const incomingCallerName = document.getElementById('incoming-caller-name');
+        const acceptCallBtn = document.getElementById('accept-call-btn');
+        const declineCallBtn = document.getElementById('decline-call-btn');
+
+        // --- AUDIO UNLOCKER FOR RECEIVING CALLS ---
+        function unlockAudio() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch(e) {}
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+        }
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('keydown', unlockAudio);
+
+        // --- RINGTONE PLAYER ---
         function playRingtone() {
             stopRingtone();
             try {
@@ -194,43 +250,54 @@
                 const playPromise = ringtoneAudio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        console.log("ringtone.mp3 is playing successfully.");
+                        console.log("ringtone.mp3 playing...");
                     }).catch(err => {
-                        console.warn("ringtone.mp3 play error (falling back to synth):", err);
+                        console.warn("ringtone.mp3 blocked/missing. Falling back to synth sound:", err);
                         playFallbackSynthRingtone();
                     });
                 }
             } catch (err) {
-                console.warn("Audio initialization error (falling back to synth):", err);
+                console.warn("Audio error. Falling back to synth sound:", err);
                 playFallbackSynthRingtone();
             }
         }
 
         function playFallbackSynthRingtone() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            function playBurst() {
-                if (!audioCtx) return;
-                const osc1 = audioCtx.createOscillator();
-                const osc2 = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
 
-                osc1.frequency.value = 440;
-                osc2.frequency.value = 480;
+                function playBurst() {
+                    if (!audioCtx) return;
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
 
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.8);
+                    osc1.frequency.value = 440;
+                    osc2.frequency.value = 480;
 
-                osc1.connect(gain);
-                osc2.connect(gain);
-                gain.connect(audioCtx.destination);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.8);
 
-                osc1.start();
-                osc2.start();
-                osc1.stop(audioCtx.currentTime + 1.8);
-                osc2.stop(audioCtx.currentTime + 1.8);
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc1.start();
+                    osc2.start();
+                    osc1.stop(audioCtx.currentTime + 1.8);
+                    osc2.stop(audioCtx.currentTime + 1.8);
+                }
+
+                playBurst();
+                ringtoneInterval = setInterval(playBurst, 3000);
+            } catch(e) {
+                console.error("Synth ringer failed:", e);
             }
-            playBurst();
-            ringtoneInterval = setInterval(playBurst, 3000);
         }
 
         function stopRingtone() {
@@ -242,10 +309,6 @@
             if (ringtoneInterval) {
                 clearInterval(ringtoneInterval);
                 ringtoneInterval = null;
-            }
-            if (audioCtx) {
-                audioCtx.close();
-                audioCtx = null;
             }
         }
 
@@ -317,6 +380,8 @@
             document.getElementById('user-avatar').textContent = username.charAt(0).toUpperCase();
             authModal.classList.add('hidden');
             
+            addSystemUpdate(`User <b>${escapeHTML(username)}</b> connected to node.`);
+
             listenToPersonalSignaling();
             loadChannelMessages();
             startFastPolling();
@@ -327,7 +392,7 @@
             window.location.reload();
         });
 
-        // --- FILE SELECTION & PREVIEW ---
+        // --- FILE SELECTION ---
         mediaFileInput.addEventListener('change', (e) => {
             if (e.target.files && e.target.files[0]) {
                 selectedFile = e.target.files[0];
@@ -342,7 +407,21 @@
             filePreview.classList.add('hidden');
         });
 
-        // --- CHANNELS & MESSAGING ---
+        // --- UPDATES FEED & SYSTEM LOGS ---
+        function addSystemUpdate(text) {
+            const item = document.createElement('div');
+            item.className = "p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-xs text-slate-300";
+            item.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                    <span>${text}</span>
+                </div>
+                <span class="text-[10px] text-slate-500">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+            `;
+            liveUpdatesList.prepend(item);
+        }
+
+        // --- CHANNELS SWITCHING ---
         document.querySelectorAll('.channel-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.channel-btn').forEach(b => {
@@ -351,14 +430,27 @@
                 btn.className = "channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2";
                 
                 activeChannel = btn.dataset.channel;
-                document.getElementById('active-channel-title').textContent = `# ${activeChannel}`;
-                knownMessageIds.clear();
-                chatBox.innerHTML = '';
-                loadChannelMessages();
+                
+                if (activeChannel === 'updates') {
+                    document.getElementById('active-channel-title').textContent = `📢 updates`;
+                    chatBox.classList.add('hidden');
+                    updatesBox.classList.remove('hidden');
+                    chatFooter.classList.add('hidden');
+                } else {
+                    document.getElementById('active-channel-title').textContent = `# ${activeChannel}`;
+                    updatesBox.classList.add('hidden');
+                    chatBox.classList.remove('hidden');
+                    chatFooter.classList.remove('hidden');
+                    knownMessageIds.clear();
+                    chatBox.innerHTML = '';
+                    loadChannelMessages();
+                }
             });
         });
 
         async function loadChannelMessages() {
+            if (activeChannel === 'updates') return;
+
             const { data } = await supabaseClient
                 .from('chat_messages')
                 .select('*')
@@ -379,7 +471,7 @@
         function startFastPolling() {
             if (fastPollingInterval) clearInterval(fastPollingInterval);
             fastPollingInterval = setInterval(() => {
-                if (currentUser && activeChannel) {
+                if (currentUser && activeChannel && activeChannel !== 'updates') {
                     loadChannelMessages();
                 }
             }, 500);
@@ -460,7 +552,7 @@
 
                     mediaUrl = urlData.publicUrl;
                 } catch (err) {
-                    alert("Media upload failed: " + err.message + "\nEnsure 'chat-media' bucket exists and is set to Public in Supabase.");
+                    alert("Media upload failed: " + err.message);
                     sendBtn.disabled = false;
                     sendBtn.textContent = 'Send';
                     return;
@@ -502,7 +594,7 @@
                 }).subscribe();
         }
 
-        // --- WEBRTC SIGNALING & CALLS ---
+        // --- WEBRTC CALLING ---
         function listenToPersonalSignaling() {
             personalSignalingChannel = supabaseClient.channel(`user-signal:${currentUser.username}`);
             
@@ -525,6 +617,7 @@
             document.getElementById('call-bar').classList.remove('hidden');
             document.getElementById('call-status').textContent = `Calling ${targetUsername}...`;
 
+            addSystemUpdate(`Initiated voice call to <b>${escapeHTML(targetUsername)}</b>`);
             playRingtone();
 
             try {
@@ -554,15 +647,20 @@
                 return;
             }
 
-            playRingtone();
+            pendingOfferPayload = payload;
+            incomingCallerName.textContent = payload.callerUsername;
+            incomingCallModal.classList.remove('hidden');
 
-            const accept = confirm(`Incoming call from ${payload.callerUsername}. Accept?`);
+            addSystemUpdate(`Incoming call from <b>${escapeHTML(payload.callerUsername)}</b>`);
+            playRingtone();
+        }
+
+        acceptCallBtn.addEventListener('click', async () => {
+            incomingCallModal.classList.add('hidden');
             stopRingtone();
 
-            if (!accept) {
-                sendSignalToUser(payload.callerUsername, { type: 'end-call' });
-                return;
-            }
+            if (!pendingOfferPayload) return;
+            const payload = pendingOfferPayload;
 
             activeCallTarget = payload.callerUsername;
             document.getElementById('call-bar').classList.remove('hidden');
@@ -593,7 +691,16 @@
                 alert("Call setup failed: " + err.message);
                 cleanUpCallState();
             }
-        }
+        });
+
+        declineCallBtn.addEventListener('click', () => {
+            incomingCallModal.classList.add('hidden');
+            stopRingtone();
+            if (pendingOfferPayload) {
+                sendSignalToUser(pendingOfferPayload.callerUsername, { type: 'end-call' });
+            }
+            pendingOfferPayload = null;
+        });
 
         async function handleIncomingAnswer(payload) {
             stopRingtone();
@@ -634,7 +741,7 @@
                 const remoteAudio = document.getElementById('remote-audio');
                 if (remoteAudio.srcObject !== event.streams[0]) {
                     remoteAudio.srcObject = event.streams[0];
-                    remoteAudio.play().catch(e => console.warn("Autoplay block workaround:", e));
+                    remoteAudio.play().catch(e => console.warn("Autoplay remote track:", e));
                 }
             };
         }
@@ -656,6 +763,7 @@
 
         function cleanUpCallState() {
             stopRingtone();
+            incomingCallModal.classList.add('hidden');
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
@@ -666,6 +774,7 @@
             }
             iceCandidateQueue = [];
             activeCallTarget = null;
+            pendingOfferPayload = null;
             document.getElementById('call-bar').classList.add('hidden');
         }
 
