@@ -185,22 +185,20 @@
         const dndToggle = document.getElementById('dnd-toggle');
 
         // --- RINGTONE PLAYER (using ringtone.mp3 from same folder with synth fallback) ---
-        function playRingtone() {
-            stopRingtone();
-            try {
-                ringtoneAudio = new Audio('ringtone.mp3');
-                ringtoneAudio.loop = true;
-                const playPromise = ringtoneAudio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(err => {
-                        console.warn("ringtone.mp3 playback prevented or missing, using WebAudio synth:", err);
-                        playFallbackSynthRingtone();
-                    });
-                }
-            } catch (err) {
-                playFallbackSynthRingtone();
-            }
-        }
+    function playRingtone() {
+        stopRingtone();
+    
+        ringtoneAudio = new Audio('ringtone.mp3');
+        ringtoneAudio.loop = true;
+    
+        ringtoneAudio.play().then(() => {
+            console.log("Ringtone playing successfully.");
+        }).catch(err => {
+            console.warn("ringtone.mp3 failed to play:", err);
+        // Fall back to WebAudio synthesizer if MP3 fails
+            playFallbackSynthRingtone();
+        });
+    }
 
         function playFallbackSynthRingtone() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
