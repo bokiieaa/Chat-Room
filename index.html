@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Chat - Full Feature Edition</title>
+    <title>Mesh Chat - Fixed Layout & Media Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -43,20 +43,20 @@
     </div>
 
     <!-- Active Call Bar -->
-    <div id="call-bar" class="hidden bg-indigo-950/80 border-b border-indigo-500/30 px-6 py-3 flex items-center justify-between z-20">
-        <div class="flex items-center gap-3">
-            <span class="relative flex h-3 w-3">
+    <div id="call-bar" class="hidden bg-indigo-950/80 border-b border-indigo-500/30 px-4 py-2.5 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+            <span class="relative flex h-3 w-3 shrink-0">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </span>
-            <span id="call-status" class="text-xs font-bold text-indigo-200">Calling...</span>
+            <span id="call-status" class="text-xs font-bold text-indigo-200 truncate">Calling...</span>
             <audio id="remote-audio" autoplay></audio>
         </div>
-        <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer">End Call</button>
+        <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ml-2">End Call</button>
     </div>
 
     <!-- Main App Layout -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex overflow-hidden min-w-0">
         
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
@@ -90,41 +90,44 @@
             </div>
 
             <div class="p-4 border-t border-slate-800 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <div id="user-avatar" class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold">?</div>
-                    <span id="current-user-display" class="text-xs font-semibold text-slate-300 truncate max-w-[100px]">Guest</span>
+                <div class="flex items-center gap-2 min-w-0">
+                    <div id="user-avatar" class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">?</div>
+                    <span id="current-user-display" class="text-xs font-semibold text-slate-300 truncate">Guest</span>
                 </div>
-                <button id="logout-btn" class="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer">Logout</button>
+                <button id="logout-btn" class="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer shrink-0 ml-2">Logout</button>
             </div>
         </aside>
 
         <!-- Chat Main Area -->
-        <main class="flex-1 flex flex-col bg-slate-950">
-            <header class="p-4 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between">
-                <h1 id="active-channel-title" class="text-sm font-bold text-slate-200"># general</h1>
+        <main class="flex-1 flex flex-col bg-slate-950 min-w-0 overflow-hidden">
+            <header class="p-3 sm:p-4 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between shrink-0">
+                <h1 id="active-channel-title" class="text-sm font-bold text-slate-200 truncate"># general</h1>
             </header>
 
-            <div id="chat-box" class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4"></div>
+            <div id="chat-box" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0"></div>
 
-            <div id="reply-preview" class="hidden bg-slate-900 border-t border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-slate-400">
-                <span>Replying to <b id="reply-target-user" class="text-indigo-400"></b>: "<span id="reply-target-text" class="italic truncate max-w-xs inline-block align-bottom"></span>"</span>
-                <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-300 font-bold">&times;</button>
+            <!-- Reply Banner (Constrained to container) -->
+            <div id="reply-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-slate-400 shrink-0 min-w-0 gap-2">
+                <div class="truncate flex-1 min-w-0">
+                    Replying to <b id="reply-target-user" class="text-indigo-400"></b>: "<span id="reply-target-text" class="italic truncate inline-block align-bottom max-w-[200px] sm:max-w-md"></span>"
+                </div>
+                <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
             </div>
 
-            <!-- Media Preview Banner -->
-            <div id="file-preview" class="hidden bg-slate-900 border-t border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-indigo-300">
-                <span id="file-preview-name" class="truncate max-w-xs"></span>
-                <button id="cancel-file-btn" class="text-slate-500 hover:text-slate-300 font-bold">&times;</button>
+            <!-- Media Preview Banner (Constrained to container) -->
+            <div id="file-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-indigo-300 shrink-0 min-w-0 gap-2">
+                <span id="file-preview-name" class="truncate flex-1 min-w-0"></span>
+                <button id="cancel-file-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
             </div>
 
-            <footer class="p-4 bg-slate-900/80 border-t border-slate-800">
-                <form id="chat-form" class="flex items-center gap-2">
-                    <label for="media-file-input" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors border border-slate-700 shrink-0">
+            <footer class="p-3 sm:p-4 bg-slate-900/80 border-t border-slate-800 shrink-0">
+                <form id="chat-form" class="flex items-center gap-2 min-w-0">
+                    <label for="media-file-input" title="Attach Media or File" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors border border-slate-700 shrink-0 flex items-center justify-center">
                         📎
                     </label>
                     <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.zip">
-                    <input type="text" id="msg-input" placeholder="Broadcast message..." autocomplete="off" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
-                    <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl transition-colors cursor-pointer shrink-0">Send</button>
+                    <input type="text" id="msg-input" placeholder="Broadcast message..." autocomplete="off" class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase px-4 sm:px-5 py-2.5 rounded-xl transition-colors cursor-pointer shrink-0">Send</button>
                 </form>
             </footer>
         </main>
@@ -353,35 +356,34 @@
 
         function appendMessageUI(msg) {
             const msgEl = document.createElement('div');
-            msgEl.className = "p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl space-y-2 relative group";
+            msgEl.className = "p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl space-y-2 relative group min-w-0 break-words";
 
             let replyHeader = msg.reply_to_id ? `<div class="text-[10px] text-indigo-400 font-mono">Replying to #${msg.reply_to_id}</div>` : '';
             
             let mediaContent = '';
             if (msg.media_url) {
-                const url = msg.media_url;
-                const type = msg.media_type || '';
+                const url = msg.media_url.toLowerCase();
 
-                if (type.startsWith('image/')) {
-                    mediaContent = `<div class="mt-2"><img src="${escapeHTML(url)}" class="max-h-60 rounded-lg border border-slate-800 object-cover" loading="lazy"></div>`;
-                } else if (type.startsWith('video/')) {
-                    mediaContent = `<div class="mt-2"><video src="${escapeHTML(url)}" controls class="max-h-60 w-full rounded-lg border border-slate-800"></video></div>`;
-                } else if (type.startsWith('audio/')) {
-                    mediaContent = `<div class="mt-2"><audio src="${escapeHTML(url)}" controls class="w-full h-8"></audio></div>`;
+                if (url.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i)) {
+                    mediaContent = `<div class="mt-2"><img src="${escapeHTML(msg.media_url)}" class="max-h-60 rounded-lg border border-slate-800 object-cover max-w-full" loading="lazy"></div>`;
+                } else if (url.match(/\.(mp4|webm|ogg|mov)($|\?)/i)) {
+                    mediaContent = `<div class="mt-2"><video src="${escapeHTML(msg.media_url)}" controls class="max-h-60 w-full rounded-lg border border-slate-800"></video></div>`;
+                } else if (url.match(/\.(mp3|wav|ogg|m4a)($|\?)/i)) {
+                    mediaContent = `<div class="mt-2"><audio src="${escapeHTML(msg.media_url)}" controls class="w-full h-8"></audio></div>`;
                 } else {
-                    mediaContent = `<div class="mt-2"><a href="${escapeHTML(url)}" target="_blank" download class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 transition-colors">📁 Download File</a></div>`;
+                    mediaContent = `<div class="mt-2"><a href="${escapeHTML(msg.media_url)}" target="_blank" download class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 transition-colors max-w-full truncate">📁 Download Attachment</a></div>`;
                 }
             }
 
             msgEl.innerHTML = `
                 ${replyHeader}
-                <div class="flex justify-between items-center text-xs">
-                    <span class="font-bold text-slate-200">${escapeHTML(msg.username)}</span>
-                    <span class="text-[10px] text-slate-500">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                <div class="flex justify-between items-center text-xs gap-2">
+                    <span class="font-bold text-slate-200 truncate">${escapeHTML(msg.username)}</span>
+                    <span class="text-[10px] text-slate-500 shrink-0">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 </div>
-                ${msg.message ? `<p class="text-xs text-slate-300 leading-relaxed">${escapeHTML(msg.message)}</p>` : ''}
+                ${msg.message ? `<p class="text-xs text-slate-300 leading-relaxed overflow-hidden break-words">${escapeHTML(msg.message)}</p>` : ''}
                 ${mediaContent}
-                <button onclick="setReplyTarget(${msg.id}, '${escapeHTML(msg.username)}', '${escapeHTML(msg.message || 'Media file')}')" class="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded transition-opacity">Reply</button>
+                <button onclick="setReplyTarget(${msg.id}, '${escapeHTML(msg.username)}', '${escapeHTML(msg.message || 'Media file')}')" class="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded transition-opacity cursor-pointer">Reply</button>
             `;
             chatBox.appendChild(msgEl);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -409,7 +411,6 @@
             sendBtn.textContent = '...';
 
             let mediaUrl = null;
-            let mediaType = null;
 
             if (selectedFile) {
                 try {
@@ -427,9 +428,8 @@
                         .getPublicUrl(filePath);
 
                     mediaUrl = urlData.publicUrl;
-                    mediaType = selectedFile.type;
                 } catch (err) {
-                    alert("Media upload failed: " + err.message + "\nEnsure 'chat-media' bucket exists and is Public in Supabase.");
+                    alert("Media upload failed: " + err.message + "\nEnsure 'chat-media' bucket exists and is set to Public in Supabase.");
                     sendBtn.disabled = false;
                     sendBtn.textContent = 'Send';
                     return;
@@ -442,8 +442,7 @@
                 channel_id: activeChannel,
                 message: text,
                 reply_to_id: activeReplyId,
-                media_url: mediaUrl,
-                media_type: mediaType
+                media_url: mediaUrl
             };
 
             msgInput.value = '';
