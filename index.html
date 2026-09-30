@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Chat - Email & OTP Access</title>
+    <title>Mesh Chat - Password Authentication</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -14,36 +14,29 @@
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased">
 
-    <!-- Auth Modal (Email & Security Code Flow) -->
+    <!-- Auth Modal (Username & Password Flow) -->
     <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
             <div class="text-center">
                 <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Mesh Network Access</h2>
-                <p class="text-xs text-slate-400 mt-1">Authenticate using your Email & Security Code</p>
+                <p class="text-xs text-slate-400 mt-1" id="auth-subtitle">Sign in or create an account to continue</p>
             </div>
             
-            <!-- Step 1: Request Security Code -->
-            <form id="email-step-form" class="space-y-4">
+            <!-- Auth Form -->
+            <form id="auth-form" class="space-y-4">
                 <div>
                     <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Username</label>
-                    <input type="text" id="auth-username" required placeholder="Choose a unique username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="auth-username" required placeholder="Enter your username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
-                    <input type="email" id="auth-email" required placeholder="you@domain.com" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                 </div>
-                <button type="submit" id="send-code-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SEND SECURITY CODE</button>
-            </form>
 
-            <!-- Step 2: Verify Security Code -->
-            <form id="otp-step-form" class="space-y-4 hidden">
-                <p class="text-xs text-slate-300">A 6-digit security code was sent to <b id="display-sent-email" class="text-indigo-400"></b></p>
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">6-Digit Security Code</label>
-                    <input type="text" id="auth-otp" maxlength="6" required placeholder="123456" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-center font-mono tracking-widest text-slate-100 focus:outline-none focus:border-indigo-500">
+                <div class="flex gap-2 pt-2">
+                    <button type="button" id="login-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">LOG IN</button>
+                    <button type="button" id="signup-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SIGN UP</button>
                 </div>
-                <button type="submit" id="verify-code-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">VERIFY & ENTER</button>
-                <button type="button" id="back-to-email-btn" class="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors">Change Email / Username</button>
             </form>
 
             <div id="auth-error" class="text-xs text-rose-400 hidden"></div>
@@ -122,8 +115,10 @@
     </div>
 
     <script>
+        // CONFIGURATION CONSTANTS
         const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
+
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
@@ -135,89 +130,84 @@
 
         // Elements
         const authModal = document.getElementById('auth-modal');
-        const emailStepForm = document.getElementById('email-step-form');
-        const otpStepForm = document.getElementById('otp-step-form');
         const authError = document.getElementById('auth-error');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
         const chatBox = document.getElementById('chat-box');
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
         const replyPreview = document.getElementById('reply-preview');
 
-        let pendingEmail = "";
-        let pendingUsername = "";
+        // --- PASSWORD AUTHENTICATION LOGIC ---
 
-        // --- AUTHENTICATION: STEP 1 (Send Security Code) ---
-        emailStepForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Helper: Hash password in browser using Web Crypto API
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Action: Sign Up
+        signupBtn.addEventListener('click', async () => {
             authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
 
-            pendingUsername = document.getElementById('auth-username').value.trim();
-            pendingEmail = document.getElementById('auth-email').value.trim();
+            if (!username || !password) return showAuthError("Username and password are required");
+            if (password.length < 6) return showAuthError("Password must be at least 6 characters");
 
-            if (!pendingUsername || !pendingEmail) return showAuthError("Username and Email are required");
-
-            // Verify if username is already taken by another account
-            const { data: existingProfile } = await supabaseClient
+            // Check if username is taken
+            const { data: existingUser } = await supabaseClient
                 .from('profiles')
                 .select('username')
-                .eq('username', pendingUsername)
+                .eq('username', username)
                 .maybeSingle();
 
-            if (existingProfile) {
+            if (existingUser) {
                 return showAuthError("Username is already taken. Please choose another.");
             }
 
-            // Send Security Code via Email (OTP)
-            const { error } = await supabaseClient.auth.signInWithOtp({ email: pendingEmail });
-            if (error) return showAuthError(error.message);
+            const passwordHash = await hashPassword(password);
+            const userId = crypto.randomUUID();
 
-            document.getElementById('display-sent-email').textContent = pendingEmail;
-            emailStepForm.classList.add('hidden');
-            otpStepForm.classList.remove('hidden');
+            // Save new user profile with password hash
+            const { error } = await supabaseClient
+                .from('profiles')
+                .insert([{ id: userId, username, password_hash: passwordHash }]);
+
+            if (error) return showAuthError("Account creation failed: " + error.message);
+
+            initAuthenticatedSession({ id: userId }, username);
         });
 
-        // --- AUTHENTICATION: STEP 2 (Verify Security Code) ---
-        otpStepForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Action: Log In
+        loginBtn.addEventListener('click', async () => {
             authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
 
-            const token = document.getElementById('auth-otp').value.trim();
-            if (!token) return showAuthError("Security code required");
+            if (!username || !password) return showAuthError("Username and password are required");
 
-            // Verify the 6-digit code with Supabase
-            const { data, error } = await supabaseClient.auth.verifyOtp({
-                email: pendingEmail,
-                token: token,
-                type: 'email'
-            });
+            const passwordHash = await hashPassword(password);
 
-            if (error) return showAuthError("Invalid or expired security code.");
-
-            // Create Profile Record if not present
-            const { data: existingProf } = await supabaseClient
+            // Verify account details
+            const { data: userProfile, error } = await supabaseClient
                 .from('profiles')
-                .select('username')
-                .eq('id', data.user.id)
+                .select('*')
+                .eq('username', username)
                 .maybeSingle();
 
-            let activeUsername = pendingUsername;
-
-            if (!existingProf) {
-                const { error: profErr } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ id: data.user.id, username: pendingUsername }]);
-
-                if (profErr) return showAuthError("Username registration failed: " + profErr.message);
-            } else {
-                activeUsername = existingProf.username;
+            if (error || !userProfile) {
+                return showAuthError("Account not found. Please sign up.");
             }
 
-            initAuthenticatedSession(data.user, activeUsername);
-        });
+            if (userProfile.password_hash !== passwordHash) {
+                return showAuthError("Incorrect password. Please try again.");
+            }
 
-        document.getElementById('back-to-email-btn').addEventListener('click', () => {
-            otpStepForm.classList.add('hidden');
-            emailStepForm.classList.remove('hidden');
+            initAuthenticatedSession({ id: userProfile.id }, userProfile.username);
         });
 
         function showAuthError(msg) {
@@ -236,8 +226,7 @@
             listenToRealtimeMessages();
         }
 
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            await supabaseClient.auth.signOut();
+        document.getElementById('logout-btn').addEventListener('click', () => {
             window.location.reload();
         });
 
@@ -332,7 +321,7 @@
                 }).subscribe();
         }
 
-        // --- WEBRTC USERNAME-BASED CALLING ---
+        // --- WEBRTC CALLING ---
         function initSignalingChannel() {
             signalingChannel = supabaseClient.channel(`signaling:${currentUser.username}`);
             signalingChannel.on('broadcast', { event: 'signal' }, async ({ payload }) => {
@@ -406,5 +395,3 @@
     </script>
 </body>
 </html>
-
-Experiencing some fuckups rn. Come back soon
