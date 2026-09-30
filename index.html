@@ -184,21 +184,27 @@
         const filePreviewName = document.getElementById('file-preview-name');
         const dndToggle = document.getElementById('dnd-toggle');
 
-        // --- RINGTONE PLAYER (using ringtone.mp3 from same folder with synth fallback) ---
-    function playRingtone() {
-        stopRingtone();
-    
-        ringtoneAudio = new Audio('ringtone.mp3');
-        ringtoneAudio.loop = true;
-    
-        ringtoneAudio.play().then(() => {
-            console.log("Ringtone playing successfully.");
-        }).catch(err => {
-            console.warn("ringtone.mp3 failed to play:", err);
-        // Fall back to WebAudio synthesizer if MP3 fails
-            playFallbackSynthRingtone();
-        });
-    }
+        // --- RINGTONE PLAYER WITH DETAILED LOGGING AND SYNTH FALLBACK ---
+        function playRingtone() {
+            stopRingtone();
+            try {
+                ringtoneAudio = new Audio('ringtone.mp3');
+                ringtoneAudio.loop = true;
+                
+                const playPromise = ringtoneAudio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log("ringtone.mp3 is playing successfully.");
+                    }).catch(err => {
+                        console.warn("ringtone.mp3 play error (falling back to synth):", err);
+                        playFallbackSynthRingtone();
+                    });
+                }
+            } catch (err) {
+                console.warn("Audio initialization error (falling back to synth):", err);
+                playFallbackSynthRingtone();
+            }
+        }
 
         function playFallbackSynthRingtone() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -358,7 +364,7 @@
                 .select('*')
                 .eq('channel_id', activeChannel)
                 .order('created_at', { ascending: true })
-                .limit(1000000);
+                .limit(100);
 
             if (data) {
                 data.forEach(msg => {
