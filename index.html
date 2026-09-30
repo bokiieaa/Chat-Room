@@ -32,13 +32,13 @@
         #chat-box::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.8); }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col items-center justify-center p-3 sm:p-6 antialiased font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col antialiased font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-hidden">
 
-    <!-- Main Container -->
-    <div class="w-full max-w-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl flex flex-col h-[85vh] overflow-hidden">
+    <!-- Main Fullscreen Container -->
+    <div class="w-full h-full bg-slate-900/60 backdrop-blur-xl flex flex-col overflow-hidden">
         
         <!-- App Header Bar -->
-        <header class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between z-10">
+        <header class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between z-10 shrink-0">
             <div class="flex items-center gap-3">
                 <div class="relative flex h-3 w-3">
                     <span class="live-dot absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -50,10 +50,18 @@
                 </div>
             </div>
             
-            <!-- User Status Pill -->
-            <div class="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 rounded-full px-3 py-1.5 shadow-inner">
-                <div id="avatar-circle" class="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-black uppercase text-white shadow-md"></div>
-                <span id="user-display" class="text-xs font-semibold text-slate-300 max-w-[120px] truncate">Connecting...</span>
+            <div class="flex items-center gap-3">
+                <!-- User Status Pill -->
+                <div class="flex items-center gap-2 bg-slate-950/60 border border-slate-800/80 rounded-full px-3 py-1.5 shadow-inner">
+                    <div id="avatar-circle" class="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-black uppercase text-white shadow-md"></div>
+                    <span id="user-display" class="text-xs font-semibold text-slate-300 max-w-[120px] truncate">Connecting...</span>
+                </div>
+
+                <!-- Updates Button (Top Right) -->
+                <button id="updates-btn" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700/80 text-xs font-bold px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 cursor-pointer">
+                    <span>✨</span>
+                    <span>Updates</span>
+                </button>
             </div>
         </header>
 
@@ -66,13 +74,13 @@
         </div>
 
         <!-- Message Processing Footer -->
-        <footer class="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800">
-            <form id="chat-form" class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all duration-300">
-                <!-- Media Attachment Button (Images & Videos) -->
+        <footer class="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800 shrink-0">
+            <form id="chat-form" class="max-w-4xl mx-auto flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all duration-300">
+                <!-- File Attachment Button (Any File Type) -->
                 <label for="media-input" class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1">
                     📁
                 </label>
-                <input type="file" id="media-input" accept="image/*,video/*" class="hidden">
+                <input type="file" id="media-input" accept="*/*" class="hidden">
 
                 <input type="text" id="msg-input" placeholder="Broadcasting a safe encrypted packet..." autocomplete="off" max="500"
                        class="flex-1 bg-transparent border-0 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-0">
@@ -83,16 +91,45 @@
         </footer>
     </div>
 
+    <!-- Recent Updates Modal Panel -->
+    <div id="updates-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🚀</span>
+                    <h2 class="text-lg font-bold text-slate-100">Commit History</h2>
+                </div>
+                <button id="close-updates-btn" class="text-slate-400 hover:text-slate-100 text-xl font-bold transition-colors cursor-pointer">&times;</button>
+            </div>
+            
+            <div id="updates-content" class="space-y-4 max-h-[60vh] overflow-y-auto pr-1 text-sm text-slate-300">
+                <div class="text-xs text-slate-500 animate-pulse">Fetching latest commits from GitHub...</div>
+            </div>
+
+            <div class="pt-2 text-right">
+                <button id="dismiss-updates-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_CFuOicrEE8nWiOUFEir3oQ_Chb7hnMt";
         
+        // --- GitHub Repository Configuration ---
+        const GITHUB_REPO_OWNER = "bokiieaa"; 
+        const GITHUB_REPO_NAME = "Chat-Room"; 
+        const TARGET_FILE_PATH = "index.html";
+
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUsername = "";
         let currentIp = "Unknown";
         let loadedMessageIds = new Set();
         let lastSentTime = 0;
+        let currentCommitSha = null;
 
         const chatBox = document.getElementById('chat-box');
         const chatForm = document.getElementById('chat-form');
@@ -101,6 +138,20 @@
         const sendBtn = document.getElementById('send-btn');
         const userDisplay = document.getElementById('user-display');
         const avatarCircle = document.getElementById('avatar-circle');
+
+        // Updates Modal Elements
+        const updatesBtn = document.getElementById('updates-btn');
+        const updatesModal = document.getElementById('updates-modal');
+        const closeUpdatesBtn = document.getElementById('close-updates-btn');
+        const dismissUpdatesBtn = document.getElementById('dismiss-updates-btn');
+        const updatesContent = document.getElementById('updates-content');
+
+        updatesBtn.addEventListener('click', () => {
+            updatesModal.classList.remove('hidden');
+            fetchGitHubUpdates();
+        });
+        closeUpdatesBtn.addEventListener('click', () => updatesModal.classList.add('hidden'));
+        dismissUpdatesBtn.addEventListener('click', () => updatesModal.classList.add('hidden'));
 
         // Dynamic-length profanity filter helper
         function filterBadWords(text) {
@@ -119,9 +170,17 @@
             return filteredText;
         }
 
+        // --- Persistent Username Logic ---
         async function initUser() {
-            let inputUsername = prompt("Enter public chat handle:") || "anonymous_" + Math.floor(Math.random() * 9000 + 1000);
-            currentUsername = filterBadWords(inputUsername);
+            let savedUsername = localStorage.getItem("chat_username");
+
+            if (!savedUsername) {
+                let inputUsername = prompt("Enter public chat handle:") || "anonymous_" + Math.floor(Math.random() * 9000 + 1000);
+                savedUsername = filterBadWords(inputUsername);
+                localStorage.setItem("chat_username", savedUsername);
+            }
+
+            currentUsername = savedUsername;
             userDisplay.textContent = currentUsername;
             avatarCircle.textContent = currentUsername.charAt(0);
 
@@ -135,6 +194,69 @@
 
             loadHistory();
             listenForNewMessages();
+            checkAutoReloadUpdate();
+            // Check for new index.html commits every 60 seconds
+            setInterval(checkAutoReloadUpdate, 60000);
+        }
+
+        // --- GitHub API Integration (Commits for index.html) ---
+        async function fetchGitHubUpdates() {
+            try {
+                const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits?path=${TARGET_FILE_PATH}&per_page=5`);
+                if (!res.ok) throw new Error("Could not fetch commit history");
+                const commits = await res.json();
+                
+                if (!commits || commits.length === 0) {
+                    updatesContent.innerHTML = `<div class="text-xs text-slate-500">No commits found for ${TARGET_FILE_PATH}.</div>`;
+                    return;
+                }
+
+                updatesContent.innerHTML = commits.map(item => {
+                    const commitMsg = escapeHTML(item.commit.message);
+                    const author = escapeHTML(item.commit.author.name);
+                    const date = new Date(item.commit.author.date).toLocaleDateString() + ' ' + new Date(item.commit.author.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const sha = item.sha.substring(0, 7);
+
+                    return `
+                        <div class="border-l-2 border-indigo-500 pl-3 space-y-1 py-1">
+                            <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                                <span class="text-indigo-400 font-bold">#${sha}</span>
+                                <span>${date}</span>
+                            </div>
+                            <p class="font-semibold text-slate-100 text-xs leading-snug whitespace-pre-wrap">${commitMsg}</p>
+                            <p class="text-[10px] text-slate-500">by ${author}</p>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                updatesContent.innerHTML = `
+                    <div class="text-xs text-amber-400/80 p-3 bg-amber-950/20 border border-amber-800/40 rounded-lg">
+                        ⚠ Unable to load updates from GitHub repo (${escapeHTML(GITHUB_REPO_OWNER)}/${escapeHTML(GITHUB_REPO_NAME)}). Ensure repo is public.
+                    </div>
+                `;
+            }
+        }
+
+        // --- Auto-Reload on GitHub Commit Update ---
+        async function checkAutoReloadUpdate() {
+            try {
+                const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits?path=${TARGET_FILE_PATH}&per_page=1`);
+                if (!res.ok) return;
+                const commits = await res.json();
+                
+                if (commits && commits.length > 0) {
+                    const latestSha = commits[0].sha;
+                    
+                    if (currentCommitSha === null) {
+                        currentCommitSha = latestSha;
+                    } else if (currentCommitSha !== latestSha) {
+                        window.location.reload();
+                    }
+                }
+            } catch (e) {
+                // Fail silently on background check errors
+            }
         }
 
         async function loadHistory() {
@@ -174,25 +296,45 @@
             const cleanUsername = filterBadWords(msg.username);
             const text = msg.message;
 
-            // Detect image/video formats via URL extensions or Base64 data strings
+            // Media & File detection logic
             const isImage = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(text) || text.startsWith('data:image/');
             const isVideo = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(text) || text.startsWith('data:video/');
+            const isAudio = /\.(mp3|wav|ogg|aac|m4a|flac)(\?.*)?$/i.test(text) || text.startsWith('data:audio/');
+            const isGenericFile = text.startsWith('http://') || text.startsWith('https://');
 
             const msgEl = document.createElement('div');
             const isMe = cleanUsername === currentUsername;
             const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            // Generate content markup based on payload type
+            // Extract filename for general downloads
+            let fileName = "Download Attachment";
+            if (isGenericFile) {
+                try {
+                    const parsedUrl = new URL(text);
+                    fileName = parsedUrl.pathname.split('/').pop() || "Download File";
+                } catch(e) {}
+            }
+
+            // Generate HTML based on file type
             let contentHTML = '';
             if (isImage) {
-                contentHTML = `<img src="${escapeHTML(text)}" alt="Uploaded image" class="max-w-full max-h-80 rounded-lg mt-1 border border-slate-700/60 object-contain" />`;
+                contentHTML = `<img src="${escapeHTML(text)}" alt="Uploaded image" class="max-w-full max-h-96 rounded-lg mt-1 border border-slate-700/60 object-contain" />`;
             } else if (isVideo) {
-                contentHTML = `<video src="${escapeHTML(text)}" controls class="max-w-full max-h-80 rounded-lg mt-1 border border-slate-700/60 object-contain"></video>`;
+                contentHTML = `<video src="${escapeHTML(text)}" controls class="max-w-full max-h-96 rounded-lg mt-1 border border-slate-700/60 object-contain"></video>`;
+            } else if (isAudio) {
+                contentHTML = `<audio src="${escapeHTML(text)}" controls class="w-full mt-2 rounded-lg"></audio>`;
+            } else if (isGenericFile) {
+                contentHTML = `
+                    <a href="${escapeHTML(text)}" target="_blank" download class="inline-flex items-center gap-2 mt-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium text-indigo-300 transition-colors">
+                        <span>📄</span>
+                        <span class="truncate max-w-[200px]">${escapeHTML(fileName)}</span>
+                        <span class="text-slate-400 text-[10px]">⬇️</span>
+                    </a>`;
             } else {
                 contentHTML = `<p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(filterBadWords(text))}</p>`;
             }
 
-            msgEl.className = "flex gap-3 items-start animate-fade-in group w-full";
+            msgEl.className = "flex gap-3 items-start animate-fade-in group w-full max-w-5xl mx-auto";
             msgEl.innerHTML = `
                 <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold uppercase tracking-wider text-slate-200 border select-none ${isMe ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-slate-800/80 border-slate-700/60'}">
                     ${escapeHTML(cleanUsername.charAt(0))}
@@ -221,21 +363,109 @@
                 </div>`;
         }
 
-        // Helper to upload media directly to Supabase Storage Bucket
+        // Client-side video compression helper
+        async function compressVideo(file, maxDimension = 1280, bitrate = 1500000) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(file);
+                video.muted = true;
+                video.playsInline = true;
+
+                video.onloadedmetadata = () => {
+                    let width = video.videoWidth;
+                    let height = video.videoHeight;
+
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        } else {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+
+                    const stream = canvas.captureStream(30);
+                    
+                    if (video.captureStream) {
+                        const audioTracks = video.captureStream().getAudioTracks();
+                        if (audioTracks.length > 0) stream.addTrack(audioTracks[0]);
+                    }
+
+                    let recorderOptions = { videoBitsPerSecond: bitrate };
+                    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+                        recorderOptions.mimeType = 'video/webm;codecs=vp9';
+                    } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+                        recorderOptions.mimeType = 'video/mp4';
+                    }
+
+                    const recorder = new MediaRecorder(stream, recorderOptions);
+                    const chunks = [];
+
+                    recorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) chunks.push(e.data);
+                    };
+
+                    recorder.onstop = () => {
+                        URL.revokeObjectURL(video.src);
+                        const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+                        const compressedFile = new File([blob], `compressed_${Date.now()}.webm`, { type: blob.type });
+                        resolve(compressedFile);
+                    };
+
+                    recorder.start();
+                    video.play();
+
+                    const drawFrame = () => {
+                        if (!video.paused && !video.ended) {
+                            ctx.drawImage(video, 0, 0, width, height);
+                            requestAnimationFrame(drawFrame);
+                        } else if (video.ended) {
+                            recorder.stop();
+                        }
+                    };
+                    drawFrame();
+                };
+
+                video.onerror = (err) => {
+                    URL.revokeObjectURL(video.src);
+                    reject(err);
+                };
+            });
+        }
+
+        // Upload any file directly to Supabase Storage Bucket
         async function uploadMediaFile(file) {
-            const fileExt = file.name.split('.').pop();
+            let fileToUpload = file;
+
+            // Compress video files larger than 5MB
+            if (file.type.startsWith('video/') && file.size > 5 * 1024 * 1024) {
+                sendBtn.textContent = "COMPRESSING...";
+                try {
+                    fileToUpload = await compressVideo(file);
+                } catch (compressionErr) {
+                    console.warn("Video compression skipped/failed, uploading original:", compressionErr);
+                }
+            }
+
+            sendBtn.textContent = "UPLOADING...";
+
+            const fileExt = fileToUpload.name.split('.').pop();
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
             const filePath = `uploads/${fileName}`;
 
-            // Upload raw file to 'chat-media' bucket
             const { data, error } = await supabaseClient
                 .storage
                 .from('chat-media')
-                .upload(filePath, file);
+                .upload(filePath, fileToUpload);
 
             if (error) throw error;
 
-            // Retrieve hosted public URL
             const { data: publicUrlData } = supabaseClient
                 .storage
                 .from('chat-media')
@@ -262,14 +492,13 @@
 
             if (!messagePayload && !mediaFile) return;
 
-            // Process media upload to bucket
+            // Process media or generic file upload to bucket
             if (mediaFile) {
                 try {
                     sendBtn.disabled = true;
-                    sendBtn.textContent = "UPLOADING...";
                     messagePayload = await uploadMediaFile(mediaFile);
                 } catch (err) {
-                    alert("Media upload failed: " + err.message + "\nEnsure 'chat-media' bucket exists and is public.");
+                    alert("File upload failed: " + err.message + "\nEnsure 'chat-media' bucket exists and is public.");
                     sendBtn.disabled = false;
                     sendBtn.textContent = "SEND";
                     return;
