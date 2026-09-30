@@ -68,11 +68,11 @@
         <!-- Message Processing Footer -->
         <footer class="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800">
             <form id="chat-form" class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1 focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all duration-300">
-                <!-- Image Attachment Button -->
-                <label for="img-input" class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                    📷
+                <!-- Media Attachment Button (Images & Videos) -->
+                <label for="media-input" class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1">
+                    📁
                 </label>
-                <input type="file" id="img-input" accept="image/*" class="hidden">
+                <input type="file" id="media-input" accept="image/*,video/*" class="hidden">
 
                 <input type="text" id="msg-input" placeholder="Broadcasting a safe encrypted packet..." autocomplete="off" max="500"
                        class="flex-1 bg-transparent border-0 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-0">
@@ -97,7 +97,7 @@
         const chatBox = document.getElementById('chat-box');
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
-        const imgInput = document.getElementById('img-input');
+        const mediaInput = document.getElementById('media-input');
         const sendBtn = document.getElementById('send-btn');
         const userDisplay = document.getElementById('user-display');
         const avatarCircle = document.getElementById('avatar-circle');
@@ -172,19 +172,24 @@
             if (placeholder) placeholder.remove();
 
             const cleanUsername = filterBadWords(msg.username);
-            const isImage = msg.message.startsWith('data:image/');
-            const cleanMessage = isImage ? msg.message : filterBadWords(msg.message);
+            const text = msg.message;
+
+            // Detect image/video formats via URL extensions or Base64 data strings
+            const isImage = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(text) || text.startsWith('data:image/');
+            const isVideo = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(text) || text.startsWith('data:video/');
 
             const msgEl = document.createElement('div');
             const isMe = cleanUsername === currentUsername;
             const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            // Generate message body content (Text vs Image)
+            // Generate content markup based on payload type
             let contentHTML = '';
             if (isImage) {
-                contentHTML = `<img src="${cleanMessage}" alt="Uploaded image" class="max-w-full max-h-80 rounded-lg mt-1 border border-slate-700/60 object-contain" />`;
+                contentHTML = `<img src="${escapeHTML(text)}" alt="Uploaded image" class="max-w-full max-h-80 rounded-lg mt-1 border border-slate-700/60 object-contain" />`;
+            } else if (isVideo) {
+                contentHTML = `<video src="${escapeHTML(text)}" controls class="max-w-full max-h-80 rounded-lg mt-1 border border-slate-700/60 object-contain"></video>`;
             } else {
-                contentHTML = `<p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(cleanMessage)}</p>`;
+                contentHTML = `<p class="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(filterBadWords(text))}</p>`;
             }
 
             msgEl.className = "flex gap-3 items-start animate-fade-in group w-full";
@@ -216,14 +221,27 @@
                 </div>`;
         }
 
-        // Helper to convert Image File to Base64 String
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
+        // Helper to upload media directly to Supabase Storage Bucket
+        async function uploadMediaFile(file) {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+            const filePath = `uploads/${fileName}`;
+
+            // Upload raw file to 'chat-media' bucket
+            const { data, error } = await supabaseClient
+                .storage
+                .from('chat-media')
+                .upload(filePath, file);
+
+            if (error) throw error;
+
+            // Retrieve hosted public URL
+            const { data: publicUrlData } = supabaseClient
+                .storage
+                .from('chat-media')
+                .getPublicUrl(filePath);
+
+            return publicUrlData.publicUrl;
         }
 
         chatForm.addEventListener('submit', async (e) => {
@@ -240,16 +258,20 @@
             }
 
             let messagePayload = msgInput.value.trim();
-            const imageFile = imgInput.files[0];
+            const mediaFile = mediaInput.files[0];
 
-            if (!messagePayload && !imageFile) return;
+            if (!messagePayload && !mediaFile) return;
 
-            // Process image file if one was selected
-            if (imageFile) {
+            // Process media upload to bucket
+            if (mediaFile) {
                 try {
-                    messagePayload = await fileToBase64(imageFile);
+                    sendBtn.disabled = true;
+                    sendBtn.textContent = "UPLOADING...";
+                    messagePayload = await uploadMediaFile(mediaFile);
                 } catch (err) {
-                    alert("Failed to process image file.");
+                    alert("Media upload failed: " + err.message + "\nEnsure 'chat-media' bucket exists and is public.");
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = "SEND";
                     return;
                 }
             } else {
@@ -258,7 +280,7 @@
 
             lastSentTime = Date.now();
             msgInput.value = '';
-            imgInput.value = ''; // Clear image input after sending
+            mediaInput.value = '';
 
             startCooldownTimer(5);
 
