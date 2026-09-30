@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Mesh Chat - WebRTC & Fast Messaging</title>
+    <title>Mesh Chat - Full Feature Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -72,27 +72,20 @@
                     </nav>
                 </div>
 
-                <!-- Call Controls & DND Switch -->
-                <div class="space-y-4">
-                    <div>
-                        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Direct Voice Call</h2>
-                        <div class="space-y-2">
-                            <input type="text" id="target-call-user" placeholder="Target Username..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
-                            <button id="start-call-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 rounded-lg transition-colors cursor-pointer">Call User</button>
-                        </div>
+                <div>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Direct Voice Call</h2>
+                    <div class="space-y-2">
+                        <input type="text" id="target-call-user" placeholder="Target Username..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                        <button id="start-call-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 rounded-lg transition-colors cursor-pointer">Call User</button>
                     </div>
+                </div>
 
-                    <!-- Do Not Disturb Switch -->
-                    <div class="bg-slate-950/60 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <span class="text-xs font-bold text-slate-300">Do Not Disturb</span>
-                            <span class="text-[10px] text-slate-500" id="dnd-status-text">Calls allowed</span>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="dnd-toggle" class="sr-only peer">
-                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
-                        </label>
-                    </div>
+                <div class="pt-2 border-t border-slate-800">
+                    <label class="flex items-center justify-between text-xs text-slate-400 font-semibold cursor-pointer select-none">
+                        <span>Do Not Disturb</span>
+                        <input type="checkbox" id="dnd-toggle" class="sr-only peer">
+                        <div class="w-8 h-4 bg-slate-800 rounded-full peer peer-checked:bg-indigo-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all relative"></div>
+                    </label>
                 </div>
             </div>
 
@@ -118,10 +111,20 @@
                 <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-300 font-bold">&times;</button>
             </div>
 
+            <!-- Media Preview Banner -->
+            <div id="file-preview" class="hidden bg-slate-900 border-t border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-indigo-300">
+                <span id="file-preview-name" class="truncate max-w-xs"></span>
+                <button id="cancel-file-btn" class="text-slate-500 hover:text-slate-300 font-bold">&times;</button>
+            </div>
+
             <footer class="p-4 bg-slate-900/80 border-t border-slate-800">
                 <form id="chat-form" class="flex items-center gap-2">
+                    <label for="media-file-input" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors border border-slate-700 shrink-0">
+                        📎
+                    </label>
+                    <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.zip">
                     <input type="text" id="msg-input" placeholder="Broadcast message..." autocomplete="off" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl transition-colors cursor-pointer">Send</button>
+                    <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase px-5 py-2.5 rounded-xl transition-colors cursor-pointer shrink-0">Send</button>
                 </form>
             </footer>
         </main>
@@ -135,13 +138,11 @@
         let currentUser = null;
         let activeChannel = 'general';
         let activeReplyId = null;
+        let selectedFile = null;
+        let knownMessageIds = new Set();
+        let fastPollingInterval = null;
 
-        // DND & Polling State
-        let dndEnabled = false;
-        let messageCache = new Set();
-        let pollInterval = null;
-
-        // WebRTC & Audio State
+        // WebRTC & Ringtone Synth State
         let peerConnection = null;
         let localStream = null;
         let activeCallTarget = null;
@@ -166,20 +167,10 @@
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
         const replyPreview = document.getElementById('reply-preview');
+        const mediaFileInput = document.getElementById('media-file-input');
+        const filePreview = document.getElementById('file-preview');
+        const filePreviewName = document.getElementById('file-preview-name');
         const dndToggle = document.getElementById('dnd-toggle');
-        const dndStatusText = document.getElementById('dnd-status-text');
-
-        // DND Toggle Event Listener
-        dndToggle.addEventListener('change', (e) => {
-            dndEnabled = e.target.checked;
-            if (dndEnabled) {
-                dndStatusText.textContent = "Calls blocked";
-                dndStatusText.className = "text-[10px] text-rose-400 font-bold";
-            } else {
-                dndStatusText.textContent = "Calls allowed";
-                dndStatusText.className = "text-[10px] text-slate-500";
-            }
-        });
 
         // --- WEBAUDIO RINGTONE SYNTHESIZER ---
         function playRingtone() {
@@ -188,7 +179,6 @@
             
             function playBurst() {
                 if (!audioCtx) return;
-                
                 const osc1 = audioCtx.createOscillator();
                 const osc2 = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
@@ -293,20 +283,31 @@
             authModal.classList.add('hidden');
             
             listenToPersonalSignaling();
-            loadChannelMessages(true);
+            loadChannelMessages();
+            startFastPolling();
             listenToRealtimeMessages();
-
-            // 500ms Rapid Refresh Interval
-            if (pollInterval) clearInterval(pollInterval);
-            pollInterval = setInterval(() => loadChannelMessages(false), 500);
         }
 
         document.getElementById('logout-btn').addEventListener('click', () => {
-            if (pollInterval) clearInterval(pollInterval);
             window.location.reload();
         });
 
-        // --- CHANNELS & MESSAGING (WITH FAST REFRESH & DEDUPLICATION) ---
+        // --- FILE SELECTION & PREVIEW ---
+        mediaFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                selectedFile = e.target.files[0];
+                filePreviewName.textContent = `Attached: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
+                filePreview.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('cancel-file-btn').addEventListener('click', () => {
+            selectedFile = null;
+            mediaFileInput.value = '';
+            filePreview.classList.add('hidden');
+        });
+
+        // --- CHANNELS & MESSAGING ---
         document.querySelectorAll('.channel-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.channel-btn').forEach(b => {
@@ -316,16 +317,13 @@
                 
                 activeChannel = btn.dataset.channel;
                 document.getElementById('active-channel-title').textContent = `# ${activeChannel}`;
-                loadChannelMessages(true);
+                knownMessageIds.clear();
+                chatBox.innerHTML = '';
+                loadChannelMessages();
             });
         });
 
-        async function loadChannelMessages(reset = false) {
-            if (reset) {
-                chatBox.innerHTML = '';
-                messageCache.clear();
-            }
-
+        async function loadChannelMessages() {
             const { data } = await supabaseClient
                 .from('chat_messages')
                 .select('*')
@@ -334,25 +332,46 @@
                 .limit(100);
 
             if (data) {
-                let hasNewMessages = false;
                 data.forEach(msg => {
-                    if (!messageCache.has(msg.id)) {
-                        messageCache.add(msg.id);
+                    if (!knownMessageIds.has(msg.id)) {
+                        knownMessageIds.add(msg.id);
                         appendMessageUI(msg);
-                        hasNewMessages = true;
                     }
                 });
-                if (hasNewMessages) {
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }
             }
+        }
+
+        // Fast Polling (0.5s / 500ms) for Instant Delivery
+        function startFastPolling() {
+            if (fastPollingInterval) clearInterval(fastPollingInterval);
+            fastPollingInterval = setInterval(() => {
+                if (currentUser && activeChannel) {
+                    loadChannelMessages();
+                }
+            }, 500);
         }
 
         function appendMessageUI(msg) {
             const msgEl = document.createElement('div');
-            msgEl.className = "p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl space-y-1 relative group";
+            msgEl.className = "p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl space-y-2 relative group";
 
             let replyHeader = msg.reply_to_id ? `<div class="text-[10px] text-indigo-400 font-mono">Replying to #${msg.reply_to_id}</div>` : '';
+            
+            let mediaContent = '';
+            if (msg.media_url) {
+                const url = msg.media_url;
+                const type = msg.media_type || '';
+
+                if (type.startsWith('image/')) {
+                    mediaContent = `<div class="mt-2"><img src="${escapeHTML(url)}" class="max-h-60 rounded-lg border border-slate-800 object-cover" loading="lazy"></div>`;
+                } else if (type.startsWith('video/')) {
+                    mediaContent = `<div class="mt-2"><video src="${escapeHTML(url)}" controls class="max-h-60 w-full rounded-lg border border-slate-800"></video></div>`;
+                } else if (type.startsWith('audio/')) {
+                    mediaContent = `<div class="mt-2"><audio src="${escapeHTML(url)}" controls class="w-full h-8"></audio></div>`;
+                } else {
+                    mediaContent = `<div class="mt-2"><a href="${escapeHTML(url)}" target="_blank" download class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 transition-colors">📁 Download File</a></div>`;
+                }
+            }
 
             msgEl.innerHTML = `
                 ${replyHeader}
@@ -360,10 +379,12 @@
                     <span class="font-bold text-slate-200">${escapeHTML(msg.username)}</span>
                     <span class="text-[10px] text-slate-500">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 </div>
-                <p class="text-xs text-slate-300 leading-relaxed">${escapeHTML(msg.message)}</p>
-                <button onclick="setReplyTarget(${msg.id}, '${escapeHTML(msg.username)}', '${escapeHTML(msg.message)}')" class="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded transition-opacity">Reply</button>
+                ${msg.message ? `<p class="text-xs text-slate-300 leading-relaxed">${escapeHTML(msg.message)}</p>` : ''}
+                ${mediaContent}
+                <button onclick="setReplyTarget(${msg.id}, '${escapeHTML(msg.username)}', '${escapeHTML(msg.message || 'Media file')}')" class="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded transition-opacity">Reply</button>
             `;
             chatBox.appendChild(msgEl);
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
         function setReplyTarget(id, username, text) {
@@ -381,41 +402,77 @@
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = msgInput.value.trim();
-            if (!text || !currentUser) return;
+            if ((!text && !selectedFile) || !currentUser) return;
+
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '...';
+
+            let mediaUrl = null;
+            let mediaType = null;
+
+            if (selectedFile) {
+                try {
+                    const fileExt = selectedFile.name.split('.').pop();
+                    const filePath = `${currentUser.username}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                        .from('chat-media')
+                        .upload(filePath, selectedFile);
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: urlData } = supabaseClient.storage
+                        .from('chat-media')
+                        .getPublicUrl(filePath);
+
+                    mediaUrl = urlData.publicUrl;
+                    mediaType = selectedFile.type;
+                } catch (err) {
+                    alert("Media upload failed: " + err.message + "\nEnsure 'chat-media' bucket exists and is Public in Supabase.");
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = 'Send';
+                    return;
+                }
+            }
 
             const payload = {
                 user_id: currentUser.id,
                 username: currentUser.username,
                 channel_id: activeChannel,
                 message: text,
-                reply_to_id: activeReplyId
+                reply_to_id: activeReplyId,
+                media_url: mediaUrl,
+                media_type: mediaType
             };
 
             msgInput.value = '';
+            selectedFile = null;
+            mediaFileInput.value = '';
+            filePreview.classList.add('hidden');
             activeReplyId = null;
             replyPreview.classList.add('hidden');
 
-            const { data, error } = await supabaseClient.from('chat_messages').insert([payload]).select();
-            if (data && data[0] && !messageCache.has(data[0].id)) {
-                messageCache.add(data[0].id);
-                appendMessageUI(data[0]);
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
+            const { error } = await supabaseClient.from('chat_messages').insert([payload]);
+            if (error) alert("Error sending message: " + error.message);
+
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send';
+            loadChannelMessages();
         });
 
         function listenToRealtimeMessages() {
             supabaseClient
                 .channel('public:chat_messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
-                    if (payload.new.channel_id === activeChannel && !messageCache.has(payload.new.id)) {
-                        messageCache.add(payload.new.id);
+                    if (payload.new.channel_id === activeChannel && !knownMessageIds.has(payload.new.id)) {
+                        knownMessageIds.add(payload.new.id);
                         appendMessageUI(payload.new);
-                        chatBox.scrollTop = chatBox.scrollHeight;
                     }
                 }).subscribe();
         }
 
-        // --- WEBRTC SIGNALING & CALL HANDLING ---
+        // --- WEBRTC SIGNALING & CALL SOUNDS ---
         function listenToPersonalSignaling() {
             personalSignalingChannel = supabaseClient.channel(`user-signal:${currentUser.username}`);
             
@@ -462,8 +519,7 @@
         });
 
         async function handleIncomingOffer(payload) {
-            // Check Do Not Disturb Toggle
-            if (dndEnabled) {
+            if (dndToggle.checked) {
                 sendSignalToUser(payload.callerUsername, { type: 'end-call' });
                 return;
             }
