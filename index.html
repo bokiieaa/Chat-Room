@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Public Chat Room</title>
+    <title>Mesh Chat - Email & OTP Access</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -14,29 +14,39 @@
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased">
 
-    <!-- Auth Overlay (Log In / Sign Up) -->
+    <!-- Auth Modal (Email & Security Code Flow) -->
     <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
             <div class="text-center">
                 <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Mesh Network Access</h2>
-                <p class="text-xs text-slate-400 mt-1">Authenticate to connect to secure channels</p>
+                <p class="text-xs text-slate-400 mt-1">Authenticate using your Email & Security Code</p>
             </div>
             
-            <form id="auth-form" class="space-y-4">
+            <!-- Step 1: Request Security Code -->
+            <form id="email-step-form" class="space-y-4">
                 <div>
                     <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Username</label>
-                    <input type="text" id="auth-username" required class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="auth-username" required placeholder="Choose a unique username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
-                    <input type="password" id="auth-password" required class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+                    <input type="email" id="auth-email" required placeholder="you@domain.com" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                 </div>
-                <div id="auth-error" class="text-xs text-rose-400 hidden"></div>
-                <div class="flex gap-3 pt-2">
-                    <button type="submit" id="login-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">LOG IN</button>
-                    <button type="button" id="signup-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">CREATE ACCOUNT</button>
-                </div>
+                <button type="submit" id="send-code-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SEND SECURITY CODE</button>
             </form>
+
+            <!-- Step 2: Verify Security Code -->
+            <form id="otp-step-form" class="space-y-4 hidden">
+                <p class="text-xs text-slate-300">A 6-digit security code was sent to <b id="display-sent-email" class="text-indigo-400"></b></p>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">6-Digit Security Code</label>
+                    <input type="text" id="auth-otp" maxlength="6" required placeholder="123456" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-center font-mono tracking-widest text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <button type="submit" id="verify-code-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">VERIFY & ENTER</button>
+                <button type="button" id="back-to-email-btn" class="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors">Change Email / Username</button>
+            </form>
+
+            <div id="auth-error" class="text-xs text-rose-400 hidden"></div>
         </div>
     </div>
 
@@ -53,10 +63,10 @@
         <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer">End Call</button>
     </div>
 
-    <!-- Main Application UI -->
+    <!-- Main Layout -->
     <div class="flex-1 flex overflow-hidden">
         
-        <!-- Sidebar Navigation (Channels & Direct Calling) -->
+        <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
             <div class="p-4 space-y-6">
                 <div>
@@ -125,55 +135,89 @@
 
         // Elements
         const authModal = document.getElementById('auth-modal');
-        const authForm = document.getElementById('auth-form');
+        const emailStepForm = document.getElementById('email-step-form');
+        const otpStepForm = document.getElementById('otp-step-form');
         const authError = document.getElementById('auth-error');
         const chatBox = document.getElementById('chat-box');
         const chatForm = document.getElementById('chat-form');
         const msgInput = document.getElementById('msg-input');
         const replyPreview = document.getElementById('reply-preview');
 
-        // --- AUTHENTICATION MODULE ---
-        document.getElementById('signup-btn').addEventListener('click', async () => {
-            const username = document.getElementById('auth-username').value.trim();
-            const password = document.getElementById('auth-password').value.trim();
-            if(!username || !password) return showAuthError("Username and password required");
+        let pendingEmail = "";
+        let pendingUsername = "";
 
-            // Synthetic email mapping for Supabase Auth engine
-            const email = `${username.toLowerCase()}@mesh.internal`;
+        // --- AUTHENTICATION: STEP 1 (Send Security Code) ---
+        emailStepForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            authError.classList.add('hidden');
 
-            const { data, error } = await supabaseClient.auth.signUp({ email, password });
-            if (error) return showAuthError(error.message);
+            pendingUsername = document.getElementById('auth-username').value.trim();
+            pendingEmail = document.getElementById('auth-email').value.trim();
 
-            // Record Profile to guarantee unique handles
-            const { error: profileErr } = await supabaseClient
+            if (!pendingUsername || !pendingEmail) return showAuthError("Username and Email are required");
+
+            // Verify if username is already taken by another account
+            const { data: existingProfile } = await supabaseClient
                 .from('profiles')
-                .insert([{ id: data.user.id, username }]);
+                .select('username')
+                .eq('username', pendingUsername)
+                .maybeSingle();
 
-            if (profileErr) {
-                if (profileErr.code === '23505') return showAuthError("Username already exists. Please choose another.");
-                return showAuthError(profileErr.message);
+            if (existingProfile) {
+                return showAuthError("Username is already taken. Please choose another.");
             }
 
-            initAuthenticatedSession(data.user, username);
+            // Send Security Code via Email (OTP)
+            const { error } = await supabaseClient.auth.signInWithOtp({ email: pendingEmail });
+            if (error) return showAuthError(error.message);
+
+            document.getElementById('display-sent-email').textContent = pendingEmail;
+            emailStepForm.classList.add('hidden');
+            otpStepForm.classList.remove('hidden');
         });
 
-        document.getElementById('login-btn').addEventListener('click', async (e) => {
+        // --- AUTHENTICATION: STEP 2 (Verify Security Code) ---
+        otpStepForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('auth-username').value.trim();
-            const password = document.getElementById('auth-password').value.trim();
-            if(!username || !password) return showAuthError("Username and password required");
+            authError.classList.add('hidden');
 
-            const email = `${username.toLowerCase()}@mesh.internal`;
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) return showAuthError("Invalid username or password.");
+            const token = document.getElementById('auth-otp').value.trim();
+            if (!token) return showAuthError("Security code required");
 
-            const { data: profile } = await supabaseClient
+            // Verify the 6-digit code with Supabase
+            const { data, error } = await supabaseClient.auth.verifyOtp({
+                email: pendingEmail,
+                token: token,
+                type: 'email'
+            });
+
+            if (error) return showAuthError("Invalid or expired security code.");
+
+            // Create Profile Record if not present
+            const { data: existingProf } = await supabaseClient
                 .from('profiles')
                 .select('username')
                 .eq('id', data.user.id)
-                .single();
+                .maybeSingle();
 
-            initAuthenticatedSession(data.user, profile.username);
+            let activeUsername = pendingUsername;
+
+            if (!existingProf) {
+                const { error: profErr } = await supabaseClient
+                    .from('profiles')
+                    .insert([{ id: data.user.id, username: pendingUsername }]);
+
+                if (profErr) return showAuthError("Username registration failed: " + profErr.message);
+            } else {
+                activeUsername = existingProf.username;
+            }
+
+            initAuthenticatedSession(data.user, activeUsername);
+        });
+
+        document.getElementById('back-to-email-btn').addEventListener('click', () => {
+            otpStepForm.classList.add('hidden');
+            emailStepForm.classList.remove('hidden');
         });
 
         function showAuthError(msg) {
@@ -192,9 +236,14 @@
             listenToRealtimeMessages();
         }
 
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+            window.location.reload();
+        });
+
         // --- CHANNEL SWITCHING ---
         document.querySelectorAll('.channel-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', () => {
                 document.querySelectorAll('.channel-btn').forEach(b => {
                     b.className = "channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2";
                 });
@@ -209,7 +258,7 @@
         // --- CHAT & REPLIES ---
         async function loadChannelMessages() {
             chatBox.innerHTML = '';
-            const { data, error } = await supabaseClient
+            const { data } = await supabaseClient
                 .from('chat_messages')
                 .select('*')
                 .eq('channel_id', activeChannel)
@@ -357,3 +406,5 @@
     </script>
 </body>
 </html>
+
+Experiencing some fuckups rn. Come back soon
