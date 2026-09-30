@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Chat - Fixed Layout & Media Edition</title>
+    <title>Mesh Chat</title>
+    <!-- Favicon from same directory -->
+    <link rel="icon" type="image/png" href="icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -18,6 +20,7 @@
     <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
             <div class="text-center">
+                <img src="icon.png" alt="Mesh Logo" class="w-12 h-12 mx-auto mb-2 object-contain" onerror="this.style.display='none'">
                 <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Mesh Network Access</h2>
                 <p class="text-xs text-slate-400 mt-1">Sign in or create an account to enter</p>
             </div>
@@ -61,6 +64,11 @@
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
             <div class="p-4 space-y-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <img src="icon.png" alt="App Icon" class="w-6 h-6 object-contain" onerror="this.style.display='none'">
+                    <span class="font-bold text-sm text-slate-200">Mesh Chat</span>
+                </div>
+
                 <div>
                     <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Channels</h2>
                     <nav class="space-y-1" id="channel-list">
@@ -106,7 +114,7 @@
 
             <div id="chat-box" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0"></div>
 
-            <!-- Reply Banner (Constrained to container) -->
+            <!-- Reply Banner (Constrained) -->
             <div id="reply-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-slate-400 shrink-0 min-w-0 gap-2">
                 <div class="truncate flex-1 min-w-0">
                     Replying to <b id="reply-target-user" class="text-indigo-400"></b>: "<span id="reply-target-text" class="italic truncate inline-block align-bottom max-w-[200px] sm:max-w-md"></span>"
@@ -114,7 +122,7 @@
                 <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
             </div>
 
-            <!-- Media Preview Banner (Constrained to container) -->
+            <!-- Media Preview Banner (Constrained) -->
             <div id="file-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-indigo-300 shrink-0 min-w-0 gap-2">
                 <span id="file-preview-name" class="truncate flex-1 min-w-0"></span>
                 <button id="cancel-file-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
@@ -145,12 +153,13 @@
         let knownMessageIds = new Set();
         let fastPollingInterval = null;
 
-        // WebRTC & Ringtone Synth State
+        // WebRTC & Ringtone State
         let peerConnection = null;
         let localStream = null;
         let activeCallTarget = null;
         let personalSignalingChannel = null;
         let iceCandidateQueue = [];
+        let ringtoneAudio = null;
         let ringtoneInterval = null;
         let audioCtx = null;
 
@@ -175,11 +184,26 @@
         const filePreviewName = document.getElementById('file-preview-name');
         const dndToggle = document.getElementById('dnd-toggle');
 
-        // --- WEBAUDIO RINGTONE SYNTHESIZER ---
+        // --- RINGTONE PLAYER (using ringtone.mp3 from same folder with synth fallback) ---
         function playRingtone() {
             stopRingtone();
+            try {
+                ringtoneAudio = new Audio('ringtone.mp3');
+                ringtoneAudio.loop = true;
+                const playPromise = ringtoneAudio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.warn("ringtone.mp3 playback prevented or missing, using WebAudio synth:", err);
+                        playFallbackSynthRingtone();
+                    });
+                }
+            } catch (err) {
+                playFallbackSynthRingtone();
+            }
+        }
+
+        function playFallbackSynthRingtone() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
             function playBurst() {
                 if (!audioCtx) return;
                 const osc1 = audioCtx.createOscillator();
@@ -201,12 +225,16 @@
                 osc1.stop(audioCtx.currentTime + 1.8);
                 osc2.stop(audioCtx.currentTime + 1.8);
             }
-
             playBurst();
             ringtoneInterval = setInterval(playBurst, 3000);
         }
 
         function stopRingtone() {
+            if (ringtoneAudio) {
+                ringtoneAudio.pause();
+                ringtoneAudio.currentTime = 0;
+                ringtoneAudio = null;
+            }
             if (ringtoneInterval) {
                 clearInterval(ringtoneInterval);
                 ringtoneInterval = null;
@@ -344,7 +372,6 @@
             }
         }
 
-        // Fast Polling (0.5s / 500ms) for Instant Delivery
         function startFastPolling() {
             if (fastPollingInterval) clearInterval(fastPollingInterval);
             fastPollingInterval = setInterval(() => {
@@ -471,7 +498,7 @@
                 }).subscribe();
         }
 
-        // --- WEBRTC SIGNALING & CALL SOUNDS ---
+        // --- WEBRTC SIGNALING & CALLS ---
         function listenToPersonalSignaling() {
             personalSignalingChannel = supabaseClient.channel(`user-signal:${currentUser.username}`);
             
