@@ -3,174 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Chat</title>
-    <!-- Favicon from same directory -->
+    <title>Mesh Network Chat</title>
     <link rel="icon" type="image/png" href="icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        #chat-box::-webkit-scrollbar, #updates-box::-webkit-scrollbar { width: 6px; }
-        #chat-box::-webkit-scrollbar-track, #updates-box::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        #chat-box::-webkit-scrollbar-thumb, #updates-box::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #2b2d31; }
+        ::-webkit-scrollbar-thumb { background: #1a1b1e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #111214; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased">
+<body class="bg-[#313338] text-slate-200 h-screen w-screen flex overflow-hidden font-sans antialiased select-none">
 
     <!-- Auth Modal -->
-    <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
-            <div class="text-center">
-                <img src="icon.png" alt="Mesh Logo" class="w-12 h-12 mx-auto mb-2 object-contain" onerror="this.style.display='none'">
-                <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Mesh Network Access</h2>
-                <p class="text-xs text-slate-400 mt-1">Sign in or create an account to enter</p>
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-[#313338] border border-[#1e1f22] p-8 rounded-lg max-w-md w-full shadow-2xl space-y-6 text-center">
+            <div>
+                <h2 class="text-2xl font-bold text-white mb-1">Welcome Back!</h2>
+                <p class="text-xs text-slate-400">We're so excited to see you again!</p>
             </div>
             
-            <form id="auth-form" onsubmit="return false;" class="space-y-4">
+            <form id="auth-form" onsubmit="return false;" class="space-y-4 text-left">
                 <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Username</label>
-                    <input type="text" id="auth-username" required placeholder="Choose or enter username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Username</label>
+                    <input type="text" id="auth-username" required class="w-full mt-1 bg-[#1e1f22] border border-[#111214] rounded-md px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#5865f2]">
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
-                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                    <input type="password" id="auth-password" required class="w-full mt-1 bg-[#1e1f22] border border-[#111214] rounded-md px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#5865f2]">
                 </div>
 
-                <div class="flex gap-2 pt-2">
-                    <button type="button" id="login-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">LOG IN</button>
-                    <button type="button" id="signup-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SIGN UP</button>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" id="login-btn" class="flex-1 bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs font-bold py-2.5 rounded transition-colors cursor-pointer">Log In</button>
+                    <button type="button" id="signup-btn" class="flex-1 bg-[#4e5058] hover:bg-[#6d6f78] text-white text-xs font-bold py-2.5 rounded transition-colors cursor-pointer">Register</button>
                 </div>
             </form>
 
-            <div id="auth-error" class="text-xs text-rose-400 hidden"></div>
+            <div id="auth-error" class="text-xs text-rose-400 hidden bg-rose-500/10 p-2.5 rounded border border-rose-500/20"></div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="report-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-[#313338] border border-[#1e1f22] p-6 rounded-lg max-w-md w-full shadow-2xl space-y-4">
+            <h3 class="text-lg font-bold text-white">Report User or Message</h3>
+            <div>
+                <label class="text-xs text-slate-400">Target User:</label>
+                <input type="text" id="report-target-user" readonly class="w-full bg-[#1e1f22] text-slate-300 text-xs p-2 rounded mt-1 border border-slate-700">
+            </div>
+            <div>
+                <label class="text-xs text-slate-400">Reason for Report:</label>
+                <textarea id="report-reason" rows="3" placeholder="Describe the violation..." class="w-full bg-[#1e1f22] text-xs p-2 rounded mt-1 border border-slate-700 focus:outline-none text-slate-100"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeReportModal()" class="px-4 py-2 bg-[#4e5058] text-xs font-bold rounded hover:bg-[#6d6f78]">Cancel</button>
+                <button id="submit-report-btn" class="px-4 py-2 bg-rose-600 text-xs font-bold rounded hover:bg-rose-500 text-white">Submit Report</button>
+            </div>
         </div>
     </div>
 
     <!-- Incoming Call Overlay Dialog -->
-    <div id="incoming-call-modal" class="hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full text-center space-y-4 shadow-2xl animate-bounce">
-            <div class="w-16 h-16 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-full flex items-center justify-center mx-auto text-2xl font-black">📞</div>
+    <div id="incoming-call-modal" class="hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-[#2b2d31] border border-[#1e1f22] p-6 rounded-2xl max-w-sm w-full text-center space-y-4 shadow-2xl animate-bounce">
+            <div class="w-16 h-16 bg-[#5865f2]/20 text-[#5865f2] border border-[#5865f2]/30 rounded-full flex items-center justify-center mx-auto text-2xl font-black">📞</div>
             <div>
-                <h3 id="incoming-caller-name" class="text-lg font-bold text-slate-100">User</h3>
-                <p class="text-xs text-slate-400 mt-0.5">Incoming Voice Call...</p>
+                <h3 id="incoming-caller-name" class="text-lg font-bold text-white">User</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Incoming Direct Voice Call...</p>
             </div>
             <div class="flex gap-3 pt-2">
-                <button id="decline-call-btn" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer">Decline</button>
-                <button id="accept-call-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer">Accept</button>
+                <button id="decline-call-btn" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">Decline</button>
+                <button id="accept-call-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">Accept</button>
             </div>
         </div>
     </div>
 
-    <!-- Active Call Bar -->
-    <div id="call-bar" class="hidden bg-indigo-950/80 border-b border-indigo-500/30 px-4 py-2.5 flex items-center justify-between z-20 shrink-0">
-        <div class="flex items-center gap-3 min-w-0">
-            <span class="relative flex h-3 w-3 shrink-0">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <span id="call-status" class="text-xs font-bold text-indigo-200 truncate">Calling...</span>
-            <audio id="remote-audio" autoplay></audio>
+    <!-- Discord Guilds Rail (Leftmost) -->
+    <nav class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0 border-r border-[#111214]">
+        <div class="w-12 h-12 bg-[#5865f2] rounded-2xl flex items-center justify-center text-white font-bold cursor-pointer hover:rounded-xl transition-all">
+            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
         </div>
-        <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ml-2">End Call</button>
-    </div>
+        <div class="w-8 h-[2px] bg-[#35363c] rounded my-1"></div>
+    </nav>
 
-    <!-- Main App Layout -->
-    <div class="flex-1 flex overflow-hidden min-w-0">
-        
-        <!-- Sidebar Navigation -->
-        <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
-            <div class="p-4 space-y-6">
-                <div class="flex items-center gap-2 mb-4">
-                    <img src="icon.png" alt="App Icon" class="w-6 h-6 object-contain" onerror="this.style.display='none'">
-                    <span class="font-bold text-sm text-slate-200">Mesh Chat</span>
-                </div>
+    <!-- Main Sidebar Navigation -->
+    <aside class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0 border-r border-[#1f2023]">
+        <div class="flex flex-col h-full overflow-hidden">
+            <!-- Header -->
+            <div class="h-12 border-b border-[#1f2023] px-4 flex items-center justify-between font-bold text-white shadow-sm shrink-0">
+                <span class="truncate">Mesh Server</span>
+                <span class="text-xs text-[#23a55a] font-mono bg-[#23a55a]/10 px-1.5 py-0.5 rounded">v2.5</span>
+            </div>
 
+            <!-- Channels & Navigation -->
+            <div class="p-2 space-y-4 overflow-y-auto flex-1">
                 <div>
-                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Channels & Feeds</h2>
-                    <nav class="space-y-1" id="channel-list">
-                        <button data-channel="general" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2"># general</button>
-                        <button data-channel="announcements" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># announcements</button>
-                        <button data-channel="updates" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2">📢 updates</button>
-                        <button data-channel="dev-talk" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># dev-talk</button>
-                        <button data-channel="media" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># media</button>
-                        <button data-channel="off-topic" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># off-topic</button>
+                    <h2 class="px-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Text Channels</h2>
+                    <nav class="space-y-0.5" id="channel-list">
+                        <button data-channel="general" class="channel-btn w-full text-left px-2 py-1.5 rounded text-xs font-semibold bg-[#404249] text-white flex items-center gap-2">
+                            <span class="text-slate-400 text-sm">#</span> general
+                        </button>
+                        <button data-channel="announcements" class="channel-btn w-full text-left px-2 py-1.5 rounded text-xs font-semibold text-slate-400 hover:bg-[#35373c] hover:text-slate-200 flex items-center gap-2">
+                            <span class="text-slate-400 text-sm">#</span> announcements
+                        </button>
+                        <button data-channel="updates" class="channel-btn w-full text-left px-2 py-1.5 rounded text-xs font-semibold text-slate-400 hover:bg-[#35373c] hover:text-slate-200 flex items-center gap-2">
+                            <span>📢</span> updates
+                        </button>
+                        <button data-channel="dev-talk" class="channel-btn w-full text-left px-2 py-1.5 rounded text-xs font-semibold text-slate-400 hover:bg-[#35373c] hover:text-slate-200 flex items-center gap-2">
+                            <span class="text-slate-400 text-sm">#</span> dev-talk
+                        </button>
+                        <button data-channel="off-topic" class="channel-btn w-full text-left px-2 py-1.5 rounded text-xs font-semibold text-slate-400 hover:bg-[#35373c] hover:text-slate-200 flex items-center gap-2">
+                            <span class="text-slate-400 text-sm">#</span> off-topic
+                        </button>
                     </nav>
                 </div>
 
+                <!-- Direct Messages & Friends -->
                 <div>
-                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Direct Voice Call</h2>
-                    <div class="space-y-2">
-                        <input type="text" id="target-call-user" placeholder="Target Username..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
-                        <button id="start-call-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 rounded-lg transition-colors cursor-pointer">Call User</button>
+                    <h2 class="px-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Direct Messages</h2>
+                    <div class="space-y-1">
+                        <button id="tab-friends-btn" class="w-full text-left px-2 py-1.5 rounded text-xs font-semibold text-slate-400 hover:bg-[#35373c] hover:text-slate-200 flex items-center gap-2">
+                            <span>👥</span> Friends & DMs
+                        </button>
                     </div>
                 </div>
 
-                <div class="pt-2 border-t border-slate-800">
-                    <label class="flex items-center justify-between text-xs text-slate-400 font-semibold cursor-pointer select-none">
-                        <span>Do Not Disturb</span>
-                        <input type="checkbox" id="dnd-toggle" class="sr-only peer">
-                        <div class="w-8 h-4 bg-slate-800 rounded-full peer peer-checked:bg-indigo-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all relative"></div>
-                    </label>
+                <!-- Moderation Tab (Rendered Dynamically for Admin/Mods) -->
+                <div id="mod-tab-section" class="hidden">
+                    <h2 class="px-2 text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-1">Moderation</h2>
+                    <button id="tab-mod-btn" class="w-full text-left px-2 py-1.5 rounded text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 flex items-center gap-2">
+                        <span>🛡️️</span> Mod Dashboard
+                    </button>
+                </div>
+
+                <!-- Voice Call Quick Tool -->
+                <div class="pt-2 border-t border-[#35363c]">
+                    <h2 class="px-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Voice Call Target</h2>
+                    <div class="space-y-1.5 px-1">
+                        <input type="text" id="target-call-user" placeholder="Username..." class="w-full bg-[#1e1f22] border border-[#111214] rounded px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#5865f2]">
+                        <button id="start-call-btn" class="w-full bg-[#23a55a] hover:bg-[#1a8345] text-white text-xs font-bold py-1 rounded transition-colors cursor-pointer">Call User</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="p-4 border-t border-slate-800 flex items-center justify-between">
+            <!-- User Footer Card -->
+            <div class="h-14 bg-[#232428] px-2 flex items-center justify-between shrink-0 border-t border-[#1f2023]">
                 <div class="flex items-center gap-2 min-w-0">
-                    <div id="user-avatar" class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">?</div>
-                    <span id="current-user-display" class="text-xs font-semibold text-slate-300 truncate">Guest</span>
-                </div>
-                <button id="logout-btn" class="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer shrink-0 ml-2">Logout</button>
-            </div>
-        </aside>
-
-        <!-- Chat / Updates Main Area -->
-        <main class="flex-1 flex flex-col bg-slate-950 min-w-0 overflow-hidden">
-            <header class="p-3 sm:p-4 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between shrink-0">
-                <h1 id="active-channel-title" class="text-sm font-bold text-slate-200 truncate"># general</h1>
-            </header>
-
-            <!-- Regular Messages Feed Container -->
-            <div id="chat-box" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0"></div>
-
-            <!-- Dedicated Updates / System Log Container -->
-            <div id="updates-box" class="hidden flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0">
-                <div class="p-4 bg-indigo-950/30 border border-indigo-500/20 rounded-xl space-y-2">
-                    <div class="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
-                        <span>🚀 System Release Update</span>
+                    <div id="user-avatar" class="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center text-xs font-bold text-white shrink-0">?</div>
+                    <div class="min-w-0">
+                        <div id="current-user-display" class="text-xs font-bold text-white truncate">Guest</div>
+                        <div id="user-role-badge" class="text-[10px] text-slate-400 truncate">Member</div>
                     </div>
-                    <p class="text-xs text-slate-300 leading-relaxed">
-                        Mesh Chat v2.4 initialized. Features WebRTC voice calling with incoming ringtone audio synthesizers, Supabase real-time message sync, and file attachments.
-                    </p>
-                    <span class="text-[10px] text-slate-500 block">System Log</span>
                 </div>
-                <div id="live-updates-list" class="space-y-3"></div>
+                <button id="logout-btn" title="Log Out" class="text-slate-400 hover:text-rose-400 p-1.5 rounded hover:bg-[#35373c] transition-colors cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </button>
             </div>
+        </div>
+    </aside>
 
-            <!-- Reply Banner -->
-            <div id="reply-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-slate-400 shrink-0 min-w-0 gap-2">
-                <div class="truncate flex-1 min-w-0">
-                    Replying to <b id="reply-target-user" class="text-indigo-400"></b>: "<span id="reply-target-text" class="italic truncate inline-block align-bottom max-w-[200px] sm:max-w-md"></span>"
+    <!-- Main View Area -->
+    <main class="flex-1 flex flex-col bg-[#313338] min-w-0 overflow-hidden">
+        
+        <!-- Active Call Header -->
+        <div id="call-bar" class="hidden bg-[#23a55a]/20 border-b border-[#23a55a]/30 px-4 py-2 flex items-center justify-between z-20 shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="relative flex h-3 w-3 shrink-0">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#23a55a] opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-[#23a55a]"></span>
+                </span>
+                <span id="call-status" class="text-xs font-bold text-emerald-200 truncate">Calling...</span>
+                <audio id="remote-audio" autoplay></audio>
+            </div>
+            <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded transition-colors cursor-pointer shrink-0">Disconnect</button>
+        </div>
+
+        <!-- Channel Header -->
+        <header class="h-12 border-b border-[#1f2023] px-4 flex items-center justify-between shrink-0 shadow-sm bg-[#313338]">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="text-slate-400 text-lg">#</span>
+                <h1 id="active-channel-title" class="text-sm font-bold text-white truncate">general</h1>
+            </div>
+        </header>
+
+        <!-- View 1: Standard Chat Feed -->
+        <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4 min-w-0"></div>
+
+        <!-- View 2: System Updates Feed -->
+        <div id="updates-box" class="hidden flex-1 p-6 overflow-y-auto space-y-4 min-w-0">
+            <div class="p-4 bg-[#2b2d31] border border-[#1e1f22] rounded-lg space-y-2">
+                <div class="flex items-center gap-2 text-[#5865f2] font-bold text-xs uppercase tracking-wider">
+                    <span>🚀 Mesh Chat v2.5 Official Stable Release</span>
                 </div>
-                <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Database-enforced role permissions, WebRTC voice signaling with synth ringtones, DM friend locks, and IP moderation tools initialized.
+                </p>
             </div>
+            <div id="live-updates-list" class="space-y-2"></div>
+        </div>
 
-            <!-- Media Preview Banner -->
-            <div id="file-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-indigo-300 shrink-0 min-w-0 gap-2">
-                <span id="file-preview-name" class="truncate flex-1 min-w-0"></span>
-                <button id="cancel-file-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
+        <!-- View 3: Friends & Direct Messages Management -->
+        <div id="friends-box" class="hidden flex-1 p-6 overflow-y-auto space-y-6 min-w-0">
+            <div class="max-w-2xl space-y-4">
+                <h2 class="text-lg font-bold text-white">Add Friend (Direct Messaging Unlock)</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="friend-search-input" placeholder="Enter username..." class="flex-1 bg-[#1e1f22] border border-[#111214] rounded px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#5865f2]">
+                    <button id="send-friend-req-btn" class="bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs font-bold px-4 py-2 rounded">Send Request</button>
+                </div>
+                <div id="friend-status-msg" class="text-xs hidden"></div>
+
+                <div class="pt-4 border-t border-[#35363c]">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3">Pending Friend Requests</h3>
+                    <div id="pending-friends-list" class="space-y-2"></div>
+                </div>
+
+                <div class="pt-4 border-t border-[#35363c]">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3">Your Friends (Direct Messaging Unlocked)</h3>
+                    <div id="accepted-friends-list" class="space-y-2"></div>
+                </div>
             </div>
+        </div>
 
-            <footer id="chat-footer" class="p-3 sm:p-4 bg-slate-900/80 border-t border-slate-800 shrink-0">
-                <form id="chat-form" class="flex items-center gap-2 min-w-0">
-                    <label for="media-file-input" title="Attach Media or File" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors border border-slate-700 shrink-0 flex items-center justify-center">
-                        📎
-                    </label>
-                    <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.zip">
-                    <input type="text" id="msg-input" placeholder="Broadcast message..." autocomplete="off" class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
-                    <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase px-4 sm:px-5 py-2.5 rounded-xl transition-colors cursor-pointer shrink-0">Send</button>
-                </form>
-            </footer>
-        </main>
-    </div>
+        <!-- View 4: Moderator Dashboard -->
+        <div id="mod-box" class="hidden flex-1 p-6 overflow-y-auto space-y-6 min-w-0">
+            <div class="space-y-4">
+                <h2 class="text-lg font-bold text-rose-400">🛡️ Moderator Dashboard & Reports</h2>
+                
+                <!-- Pending Reports Section -->
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">User Reports Queue</h3>
+                    <div id="reports-queue-list" class="space-y-2"></div>
+                </div>
+
+                <!-- Manual Moderation Actions -->
+                <div class="pt-4 border-t border-[#35363c] space-y-3 max-w-xl">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Direct Moderation Action</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" id="mod-target-user" placeholder="Target Username" class="bg-[#1e1f22] border border-[#111214] rounded px-3 py-2 text-xs text-slate-100">
+                        <input type="text" id="mod-reason" placeholder="Reason" class="bg-[#1e1f22] border border-[#111214] rounded px-3 py-2 text-xs text-slate-100">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="executeModAction('warn')" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2 rounded">Warn User</button>
+                        <button onclick="executeModAction('timeout')" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2 rounded">Timeout IP (24h)</button>
+                        <button onclick="executeModAction('ban')" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2 rounded">Ban User & IP</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reply / Media Previews -->
+        <div id="reply-preview" class="hidden bg-[#2b2d31] border-t border-[#1f2023] px-4 py-1.5 flex items-center justify-between text-xs text-slate-400 shrink-0">
+            <div class="truncate">Replying to <b id="reply-target-user" class="text-[#5865f2]"></b></div>
+            <button id="cancel-reply-btn" class="text-slate-400 hover:text-white font-bold">&times;</button>
+        </div>
+
+        <div id="file-preview" class="hidden bg-[#2b2d31] border-t border-[#1f2023] px-4 py-1.5 flex items-center justify-between text-xs text-[#5865f2] shrink-0">
+            <span id="file-preview-name" class="truncate"></span>
+            <button id="cancel-file-btn" class="text-slate-400 hover:text-white font-bold">&times;</button>
+        </div>
+
+        <!-- Footer Input Form -->
+        <footer id="chat-footer" class="p-4 bg-[#313338] shrink-0">
+            <form id="chat-form" class="flex items-center gap-2 bg-[#383a40] rounded-lg px-4 py-2.5">
+                <label for="media-file-input" title="Attach Media" class="text-slate-400 hover:text-slate-200 cursor-pointer">
+                    📎
+                </label>
+                <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.zip">
+                <input type="text" id="msg-input" placeholder="Message #general..." autocomplete="off" class="flex-1 bg-transparent text-sm text-slate-100 focus:outline-none">
+                <button type="submit" id="send-btn" class="bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs font-bold px-4 py-1.5 rounded transition-colors cursor-pointer">Send</button>
+            </form>
+        </footer>
+    </main>
 
     <script>
         const SUPABASE_URL = "https://wmxynxxbpxzfahqanfot.supabase.co";
@@ -178,139 +281,13 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
+        let userIpAddress = '127.0.0.1';
         let activeChannel = 'general';
-        let activeReplyId = null;
-        let selectedFile = null;
         let knownMessageIds = new Set();
         let fastPollingInterval = null;
 
-        // WebRTC & Ringtone State
-        let peerConnection = null;
-        let localStream = null;
-        let activeCallTarget = null;
-        let personalSignalingChannel = null;
-        let iceCandidateQueue = [];
-        let ringtoneAudio = null;
-        let ringtoneInterval = null;
-        let audioCtx = null;
-        let pendingOfferPayload = null;
-
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-
-        // DOM Elements
-        const authModal = document.getElementById('auth-modal');
-        const authError = document.getElementById('auth-error');
-        const loginBtn = document.getElementById('login-btn');
-        const signupBtn = document.getElementById('signup-btn');
-        const chatBox = document.getElementById('chat-box');
-        const updatesBox = document.getElementById('updates-box');
-        const liveUpdatesList = document.getElementById('live-updates-list');
-        const chatFooter = document.getElementById('chat-footer');
-        const chatForm = document.getElementById('chat-form');
-        const msgInput = document.getElementById('msg-input');
-        const replyPreview = document.getElementById('reply-preview');
-        const mediaFileInput = document.getElementById('media-file-input');
-        const filePreview = document.getElementById('file-preview');
-        const filePreviewName = document.getElementById('file-preview-name');
-        const dndToggle = document.getElementById('dnd-toggle');
-
-        const incomingCallModal = document.getElementById('incoming-call-modal');
-        const incomingCallerName = document.getElementById('incoming-caller-name');
-        const acceptCallBtn = document.getElementById('accept-call-btn');
-        const declineCallBtn = document.getElementById('decline-call-btn');
-
-        // --- AUDIO UNLOCKER FOR RECEIVING CALLS ---
-        function unlockAudio() {
-            try {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-            } catch(e) {}
-            window.removeEventListener('click', unlockAudio);
-            window.removeEventListener('keydown', unlockAudio);
-        }
-        window.addEventListener('click', unlockAudio);
-        window.addEventListener('keydown', unlockAudio);
-
-        // --- RINGTONE PLAYER ---
-        function playRingtone() {
-            stopRingtone();
-            try {
-                ringtoneAudio = new Audio('ringtone.mp3');
-                ringtoneAudio.loop = true;
-                
-                const playPromise = ringtoneAudio.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        console.log("ringtone.mp3 playing...");
-                    }).catch(err => {
-                        console.warn("ringtone.mp3 blocked/missing. Falling back to synth sound:", err);
-                        playFallbackSynthRingtone();
-                    });
-                }
-            } catch (err) {
-                console.warn("Audio error. Falling back to synth sound:", err);
-                playFallbackSynthRingtone();
-            }
-        }
-
-        function playFallbackSynthRingtone() {
-            try {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-
-                function playBurst() {
-                    if (!audioCtx) return;
-                    const osc1 = audioCtx.createOscillator();
-                    const osc2 = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-
-                    osc1.frequency.value = 440;
-                    osc2.frequency.value = 480;
-
-                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.8);
-
-                    osc1.connect(gain);
-                    osc2.connect(gain);
-                    gain.connect(audioCtx.destination);
-
-                    osc1.start();
-                    osc2.start();
-                    osc1.stop(audioCtx.currentTime + 1.8);
-                    osc2.stop(audioCtx.currentTime + 1.8);
-                }
-
-                playBurst();
-                ringtoneInterval = setInterval(playBurst, 3000);
-            } catch(e) {
-                console.error("Synth ringer failed:", e);
-            }
-        }
-
-        function stopRingtone() {
-            if (ringtoneAudio) {
-                ringtoneAudio.pause();
-                ringtoneAudio.currentTime = 0;
-                ringtoneAudio = null;
-            }
-            if (ringtoneInterval) {
-                clearInterval(ringtoneInterval);
-                ringtoneInterval = null;
-            }
-        }
+        // Fetch user IP address on launch for moderation tracking
+        fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => { userIpAddress = d.ip; }).catch(() => {});
 
         // --- AUTHENTICATION ---
         async function hashPassword(password) {
@@ -320,143 +297,115 @@
             return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        signupBtn.addEventListener('click', async () => {
-            authError.classList.add('hidden');
+        document.getElementById('signup-btn').addEventListener('click', async () => {
             const username = document.getElementById('auth-username').value.trim();
             const password = document.getElementById('auth-password').value;
-
             if (!username || !password) return showAuthError("Username and password required.");
-            if (password.length < 6) return showAuthError("Password must be at least 6 characters.");
 
-            const { data: existingUser } = await supabaseClient
-                .from('profiles')
-                .select('username')
-                .eq('username', username)
-                .maybeSingle();
-
-            if (existingUser) return showAuthError("Username is already taken.");
+            // Check IP Ban Status
+            const { data: ipBan } = await supabaseClient.from('ip_bans').select('*').eq('ip_address', userIpAddress).maybeSingle();
+            if (ipBan) return showAuthError(`You are IP Banned. Reason: ${ipBan.reason || 'Violation'}`);
 
             const passwordHash = await hashPassword(password);
             const userId = crypto.randomUUID();
 
             const { error } = await supabaseClient
                 .from('profiles')
-                .insert([{ id: userId, username, password_hash: passwordHash }]);
+                .insert([{ id: userId, username, password_hash: passwordHash, ip_address: userIpAddress, role: 'user' }]);
 
-            if (error) return showAuthError("Account creation failed: " + error.message);
-
-            initAuthenticatedSession({ id: userId }, username);
+            if (error) return showAuthError("Signup failed: " + error.message);
+            initAuthenticatedSession({ id: userId, role: 'user' }, username);
         });
 
-        loginBtn.addEventListener('click', async () => {
-            authError.classList.add('hidden');
+        document.getElementById('login-btn').addEventListener('click', async () => {
             const username = document.getElementById('auth-username').value.trim();
             const password = document.getElementById('auth-password').value;
-
             if (!username || !password) return showAuthError("Username and password required.");
 
             const passwordHash = await hashPassword(password);
-
-            const { data: userProfile, error } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('username', username)
-                .maybeSingle();
+            const { data: userProfile, error } = await supabaseClient.from('profiles').select('*').eq('username', username).maybeSingle();
 
             if (error || !userProfile) return showAuthError("Account not found.");
             if (userProfile.password_hash !== passwordHash) return showAuthError("Incorrect password.");
+            
+            // Check Account Ban
+            if (userProfile.is_banned) return showAuthError(`Account banned: ${userProfile.ban_reason || 'Banned'}`);
+            
+            // Check Account Timeout
+            if (userProfile.timeout_until && new Date(userProfile.timeout_until) > new Date()) {
+                const expireTime = new Date(userProfile.timeout_until).toLocaleTimeString();
+                return showAuthError(`Account timed out until ${expireTime}. Reason: ${userProfile.ban_reason || 'Muted'}`);
+            }
 
-            initAuthenticatedSession({ id: userProfile.id }, userProfile.username);
+            initAuthenticatedSession(userProfile, username);
         });
 
         function showAuthError(msg) {
-            authError.textContent = msg;
-            authError.classList.remove('hidden');
+            const errEl = document.getElementById('auth-error');
+            errEl.textContent = msg;
+            errEl.classList.remove('hidden');
         }
 
-        function initAuthenticatedSession(user, username) {
-            currentUser = { id: user.id, username };
-            document.getElementById('current-user-display').textContent = username;
-            document.getElementById('user-avatar').textContent = username.charAt(0).toUpperCase();
-            authModal.classList.add('hidden');
+        function initAuthenticatedSession(userProfile, username) {
+            currentUser = { id: userProfile.id, username, role: userProfile.role || 'user' };
             
-            addSystemUpdate(`User <b>${escapeHTML(username)}</b> connected to node.`);
+            document.getElementById('current-user-display').textContent = username;
+            document.getElementById('user-role-badge').textContent = currentUser.role.toUpperCase();
+            document.getElementById('user-avatar').textContent = username.charAt(0).toUpperCase();
+            document.getElementById('auth-modal').classList.add('hidden');
 
-            listenToPersonalSignaling();
+            // Render Mod Panel strictly if role is 'admin' or 'moderator'
+            if (currentUser.role === 'admin' || currentUser.role === 'moderator') {
+                document.getElementById('mod-tab-section').classList.remove('hidden');
+                loadModerationReports();
+            }
+
             loadChannelMessages();
             startFastPolling();
             listenToRealtimeMessages();
         }
 
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            window.location.reload();
-        });
+        document.getElementById('logout-btn').addEventListener('click', () => window.location.reload());
 
-        // --- FILE SELECTION ---
-        mediaFileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                selectedFile = e.target.files[0];
-                filePreviewName.textContent = `Attached: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
-                filePreview.classList.remove('hidden');
-            }
-        });
-
-        document.getElementById('cancel-file-btn').addEventListener('click', () => {
-            selectedFile = null;
-            mediaFileInput.value = '';
-            filePreview.classList.add('hidden');
-        });
-
-        // --- UPDATES FEED & SYSTEM LOGS ---
-        function addSystemUpdate(text) {
-            const item = document.createElement('div');
-            item.className = "p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-xs text-slate-300";
-            item.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                    <span>${text}</span>
-                </div>
-                <span class="text-[10px] text-slate-500">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-            `;
-            liveUpdatesList.prepend(item);
-        }
-
-        // --- CHANNELS SWITCHING ---
+        // --- NAVIGATION SWITCHER ---
         document.querySelectorAll('.channel-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.channel-btn').forEach(b => {
-                    b.className = "channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2";
-                });
-                btn.className = "channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2";
-                
+                showMainView('chat');
                 activeChannel = btn.dataset.channel;
-                
-                if (activeChannel === 'updates') {
-                    document.getElementById('active-channel-title').textContent = `📢 updates`;
-                    chatBox.classList.add('hidden');
-                    updatesBox.classList.remove('hidden');
-                    chatFooter.classList.add('hidden');
-                } else {
-                    document.getElementById('active-channel-title').textContent = `# ${activeChannel}`;
-                    updatesBox.classList.add('hidden');
-                    chatBox.classList.remove('hidden');
-                    chatFooter.classList.remove('hidden');
-                    knownMessageIds.clear();
-                    chatBox.innerHTML = '';
-                    loadChannelMessages();
-                }
+                document.getElementById('active-channel-title').textContent = activeChannel;
+                knownMessageIds.clear();
+                document.getElementById('chat-box').innerHTML = '';
+                loadChannelMessages();
             });
         });
 
-        async function loadChannelMessages() {
-            if (activeChannel === 'updates') return;
+        document.getElementById('tab-friends-btn').addEventListener('click', () => showMainView('friends'));
+        document.getElementById('tab-mod-btn').addEventListener('click', () => showMainView('mod'));
 
+        function showMainView(viewName) {
+            ['chat-box', 'updates-box', 'friends-box', 'mod-box'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('chat-footer').classList.add('hidden');
+
+            if (viewName === 'chat') {
+                document.getElementById('chat-box').classList.remove('hidden');
+                document.getElementById('chat-footer').classList.remove('hidden');
+            } else if (viewName === 'friends') {
+                document.getElementById('friends-box').classList.remove('hidden');
+                document.getElementById('active-channel-title').textContent = 'Friends & Direct Messages';
+            } else if (viewName === 'mod') {
+                document.getElementById('mod-box').classList.remove('hidden');
+                document.getElementById('active-channel-title').textContent = '🛡️ Moderation Dashboard';
+            }
+        }
+
+        // --- CHAT & MESSAGING ---
+        async function loadChannelMessages() {
             const { data } = await supabaseClient
                 .from('chat_messages')
                 .select('*')
                 .eq('channel_id', activeChannel)
                 .order('created_at', { ascending: true })
-                .limit(1000000);
+                .limit(100);
 
             if (data) {
                 data.forEach(msg => {
@@ -471,115 +420,65 @@
         function startFastPolling() {
             if (fastPollingInterval) clearInterval(fastPollingInterval);
             fastPollingInterval = setInterval(() => {
-                if (currentUser && activeChannel && activeChannel !== 'updates') {
+                if (currentUser && activeChannel && !document.getElementById('chat-box').classList.contains('hidden')) {
                     loadChannelMessages();
                 }
-            }, 500);
+            }, 1000);
         }
 
         function appendMessageUI(msg) {
             const msgEl = document.createElement('div');
-            msgEl.className = "p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl space-y-2 relative group min-w-0 break-words";
-
-            let replyHeader = msg.reply_to_id ? `<div class="text-[10px] text-indigo-400 font-mono">Replying to #${msg.reply_to_id}</div>` : '';
-            
-            let mediaContent = '';
-            if (msg.media_url) {
-                const url = msg.media_url.toLowerCase();
-
-                if (url.match(/\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i)) {
-                    mediaContent = `<div class="mt-2"><img src="${escapeHTML(msg.media_url)}" class="max-h-60 rounded-lg border border-slate-800 object-cover max-w-full" loading="lazy"></div>`;
-                } else if (url.match(/\.(mp4|webm|ogg|mov)($|\?)/i)) {
-                    mediaContent = `<div class="mt-2"><video src="${escapeHTML(msg.media_url)}" controls class="max-h-60 w-full rounded-lg border border-slate-800"></video></div>`;
-                } else if (url.match(/\.(mp3|wav|ogg|m4a)($|\?)/i)) {
-                    mediaContent = `<div class="mt-2"><audio src="${escapeHTML(msg.media_url)}" controls class="w-full h-8"></audio></div>`;
-                } else {
-                    mediaContent = `<div class="mt-2"><a href="${escapeHTML(msg.media_url)}" target="_blank" download class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 transition-colors max-w-full truncate">📁 Download Attachment</a></div>`;
-                }
-            }
+            msgEl.className = "flex gap-3 px-2 py-1 hover:bg-[#2e3035] rounded group relative min-w-0 break-words";
 
             msgEl.innerHTML = `
-                ${replyHeader}
-                <div class="flex justify-between items-center text-xs gap-2">
-                    <span class="font-bold text-slate-200 truncate">${escapeHTML(msg.username)}</span>
-                    <span class="text-[10px] text-slate-500 shrink-0">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                <div class="w-10 h-10 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-bold text-sm shrink-0 mt-0.5">
+                    ${escapeHTML(msg.username.charAt(0).toUpperCase())}
                 </div>
-                ${msg.message ? `<p class="text-xs text-slate-300 leading-relaxed overflow-hidden break-words">${escapeHTML(msg.message)}</p>` : ''}
-                ${mediaContent}
-                <button onclick="setReplyTarget(${msg.id}, '${escapeHTML(msg.username)}', '${escapeHTML(msg.message || 'Media file')}')" class="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded transition-opacity cursor-pointer">Reply</button>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-white hover:underline cursor-pointer" onclick="openReportModal('${escapeHTML(msg.username)}')">${escapeHTML(msg.username)}</span>
+                        <span class="text-[10px] text-slate-400">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    ${msg.message ? `<p class="text-xs text-slate-300 mt-0.5">${escapeHTML(msg.message)}</p>` : ''}
+                </div>
+                <div class="opacity-0 group-hover:opacity-100 absolute right-2 top-2 bg-[#2b2d31] border border-[#1e1f22] rounded flex gap-1 p-1">
+                    <button onclick="openReportModal('${escapeHTML(msg.username)}', '${escapeHTML(msg.message || '')}')" class="text-[10px] text-rose-400 hover:bg-rose-500/20 px-1.5 py-0.5 rounded">Flag</button>
+                </div>
             `;
+            const chatBox = document.getElementById('chat-box');
             chatBox.appendChild(msgEl);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        function setReplyTarget(id, username, text) {
-            activeReplyId = id;
-            document.getElementById('reply-target-user').textContent = username;
-            document.getElementById('reply-target-text').textContent = text;
-            replyPreview.classList.remove('hidden');
-        }
-
-        document.getElementById('cancel-reply-btn').addEventListener('click', () => {
-            activeReplyId = null;
-            replyPreview.classList.add('hidden');
-        });
-
-        chatForm.addEventListener('submit', async (e) => {
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const text = msgInput.value.trim();
-            if ((!text && !selectedFile) || !currentUser) return;
+            const text = document.getElementById('msg-input').value.trim();
+            if (!text || !currentUser) return;
 
-            const sendBtn = document.getElementById('send-btn');
-            sendBtn.disabled = true;
-            sendBtn.textContent = '...';
+            // Check if current user is timed out or banned before sending
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('timeout_until, is_banned')
+                .eq('id', currentUser.id)
+                .single();
 
-            let mediaUrl = null;
-
-            if (selectedFile) {
-                try {
-                    const fileExt = selectedFile.name.split('.').pop();
-                    const filePath = `${currentUser.username}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                        .from('chat-media')
-                        .upload(filePath, selectedFile);
-
-                    if (uploadError) throw uploadError;
-
-                    const { data: urlData } = supabaseClient.storage
-                        .from('chat-media')
-                        .getPublicUrl(filePath);
-
-                    mediaUrl = urlData.publicUrl;
-                } catch (err) {
-                    alert("Media upload failed: " + err.message);
-                    sendBtn.disabled = false;
-                    sendBtn.textContent = 'Send';
-                    return;
-                }
+            if (profile?.is_banned) {
+                alert("Your account is banned.");
+                return window.location.reload();
             }
 
-            const payload = {
+            if (profile?.timeout_until && new Date(profile.timeout_until) > new Date()) {
+                alert(`You are timed out until ${new Date(profile.timeout_until).toLocaleTimeString()}`);
+                return;
+            }
+
+            document.getElementById('msg-input').value = '';
+            await supabaseClient.from('chat_messages').insert([{
                 user_id: currentUser.id,
                 username: currentUser.username,
                 channel_id: activeChannel,
-                message: text,
-                reply_to_id: activeReplyId,
-                media_url: mediaUrl
-            };
-
-            msgInput.value = '';
-            selectedFile = null;
-            mediaFileInput.value = '';
-            filePreview.classList.add('hidden');
-            activeReplyId = null;
-            replyPreview.classList.add('hidden');
-
-            const { error } = await supabaseClient.from('chat_messages').insert([payload]);
-            if (error) alert("Error sending message: " + error.message);
-
-            sendBtn.disabled = false;
-            sendBtn.textContent = 'Send';
+                message: text
+            }]);
             loadChannelMessages();
         });
 
@@ -594,192 +493,137 @@
                 }).subscribe();
         }
 
-        // --- WEBRTC CALLING ---
-        function listenToPersonalSignaling() {
-            personalSignalingChannel = supabaseClient.channel(`user-signal:${currentUser.username}`);
-            
-            personalSignalingChannel
-                .on('broadcast', { event: 'signal' }, async ({ payload }) => {
-                    if (payload.type === 'offer') await handleIncomingOffer(payload);
-                    else if (payload.type === 'answer') await handleIncomingAnswer(payload);
-                    else if (payload.type === 'ice-candidate') await handleIncomingIceCandidate(payload);
-                    else if (payload.type === 'end-call') cleanUpCallState();
-                })
-                .subscribe();
+        // --- REPORTING SYSTEM ---
+        function openReportModal(targetUser, msgContent = '') {
+            document.getElementById('report-target-user').value = targetUser;
+            document.getElementById('report-modal').dataset.msgContent = msgContent;
+            document.getElementById('report-modal').classList.remove('hidden');
         }
 
-        document.getElementById('start-call-btn').addEventListener('click', async () => {
-            const targetUsername = document.getElementById('target-call-user').value.trim();
-            if (!targetUsername) return alert("Please enter target username.");
-            if (targetUsername === currentUser.username) return alert("You cannot call yourself.");
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
 
-            activeCallTarget = targetUsername;
-            document.getElementById('call-bar').classList.remove('hidden');
-            document.getElementById('call-status').textContent = `Calling ${targetUsername}...`;
+        document.getElementById('submit-report-btn').addEventListener('click', async () => {
+            const target = document.getElementById('report-target-user').value;
+            const reason = document.getElementById('report-reason').value.trim();
+            const msgContent = document.getElementById('report-modal').dataset.msgContent;
 
-            addSystemUpdate(`Initiated voice call to <b>${escapeHTML(targetUsername)}</b>`);
-            playRingtone();
+            if (!reason) return alert("Please enter a reason.");
 
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                setupPeerConnection(targetUsername);
+            await supabaseClient.from('reports').insert([{
+                reporter_username: currentUser.username,
+                target_username: target,
+                reason: reason,
+                message_content: msgContent
+            }]);
 
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                sendSignalToUser(targetUsername, {
-                    type: 'offer',
-                    offer: offer,
-                    callerUsername: currentUser.username
-                });
-
-            } catch (err) {
-                alert("Microphone error: " + err.message);
-                cleanUpCallState();
-            }
+            closeReportModal();
+            alert("Report submitted to moderators.");
         });
 
-        async function handleIncomingOffer(payload) {
-            if (dndToggle.checked) {
-                sendSignalToUser(payload.callerUsername, { type: 'end-call' });
+        // --- MODERATION PANEL & ACTIONS ---
+        async function loadModerationReports() {
+            const { data: reports } = await supabaseClient.from('reports').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+            const container = document.getElementById('reports-queue-list');
+            container.innerHTML = '';
+
+            if (!reports || reports.length === 0) {
+                container.innerHTML = '<div class="text-xs text-slate-500">No pending user reports.</div>';
                 return;
             }
 
-            pendingOfferPayload = payload;
-            incomingCallerName.textContent = payload.callerUsername;
-            incomingCallModal.classList.remove('hidden');
-
-            addSystemUpdate(`Incoming call from <b>${escapeHTML(payload.callerUsername)}</b>`);
-            playRingtone();
-        }
-
-        acceptCallBtn.addEventListener('click', async () => {
-            incomingCallModal.classList.add('hidden');
-            stopRingtone();
-
-            if (!pendingOfferPayload) return;
-            const payload = pendingOfferPayload;
-
-            activeCallTarget = payload.callerUsername;
-            document.getElementById('call-bar').classList.remove('hidden');
-            document.getElementById('call-status').textContent = `In call with ${payload.callerUsername}`;
-
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                setupPeerConnection(payload.callerUsername);
-
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
-
-                while (iceCandidateQueue.length > 0) {
-                    const cand = iceCandidateQueue.shift();
-                    await peerConnection.addIceCandidate(cand);
-                }
-
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                sendSignalToUser(payload.callerUsername, {
-                    type: 'answer',
-                    answer: answer
-                });
-
-            } catch (err) {
-                alert("Call setup failed: " + err.message);
-                cleanUpCallState();
-            }
-        });
-
-        declineCallBtn.addEventListener('click', () => {
-            incomingCallModal.classList.add('hidden');
-            stopRingtone();
-            if (pendingOfferPayload) {
-                sendSignalToUser(pendingOfferPayload.callerUsername, { type: 'end-call' });
-            }
-            pendingOfferPayload = null;
-        });
-
-        async function handleIncomingAnswer(payload) {
-            stopRingtone();
-            if (!peerConnection) return;
-
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
-            document.getElementById('call-status').textContent = `In Call with ${activeCallTarget}`;
-
-            while (iceCandidateQueue.length > 0) {
-                const cand = iceCandidateQueue.shift();
-                await peerConnection.addIceCandidate(cand);
-            }
-        }
-
-        async function handleIncomingIceCandidate(payload) {
-            const candidate = new RTCIceCandidate(payload.candidate);
-            if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
-                await peerConnection.addIceCandidate(candidate);
-            } else {
-                iceCandidateQueue.push(candidate);
-            }
-        }
-
-        function setupPeerConnection(targetUsername) {
-            peerConnection = new RTCPeerConnection(rtcConfig);
-
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    sendSignalToUser(targetUsername, {
-                        type: 'ice-candidate',
-                        candidate: event.candidate
-                    });
-                }
-            };
-
-            peerConnection.ontrack = (event) => {
-                stopRingtone();
-                const remoteAudio = document.getElementById('remote-audio');
-                if (remoteAudio.srcObject !== event.streams[0]) {
-                    remoteAudio.srcObject = event.streams[0];
-                    remoteAudio.play().catch(e => console.warn("Autoplay remote track:", e));
-                }
-            };
-        }
-
-        function sendSignalToUser(targetUsername, payload) {
-            supabaseClient.channel(`user-signal:${targetUsername}`).send({
-                type: 'broadcast',
-                event: 'signal',
-                payload: payload
+            reports.forEach(r => {
+                const item = document.createElement('div');
+                item.className = "p-3 bg-[#2b2d31] border border-[#1e1f22] rounded flex justify-between items-center text-xs";
+                item.innerHTML = `
+                    <div>
+                        <div class="font-bold text-rose-400">Target: ${escapeHTML(r.target_username)}</div>
+                        <div class="text-slate-300">Reason: ${escapeHTML(r.reason)}</div>
+                        <div class="text-[10px] text-slate-500">Reported by ${escapeHTML(r.reporter_username)}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="resolveReport(${r.id}, 'dismiss')" class="px-2 py-1 bg-[#4e5058] rounded text-white">Dismiss</button>
+                        <button onclick="resolveReport(${r.id}, 'action')" class="px-2 py-1 bg-rose-600 rounded text-white">Take Action</button>
+                    </div>
+                `;
+                container.appendChild(item);
             });
         }
 
-        document.getElementById('end-call-btn').addEventListener('click', () => {
-            if (activeCallTarget) {
-                sendSignalToUser(activeCallTarget, { type: 'end-call' });
-            }
-            cleanUpCallState();
-        });
-
-        function cleanUpCallState() {
-            stopRingtone();
-            incomingCallModal.classList.add('hidden');
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            iceCandidateQueue = [];
-            activeCallTarget = null;
-            pendingOfferPayload = null;
-            document.getElementById('call-bar').classList.add('hidden');
+        async function resolveReport(id, status) {
+            await supabaseClient.from('reports').update({ status }).eq('id', id);
+            loadModerationReports();
         }
 
+        async function executeModAction(type) {
+            const target = document.getElementById('mod-target-user').value.trim();
+            const reason = document.getElementById('mod-reason').value.trim() || 'Violation of community guidelines';
+
+            if (!target) return alert("Please enter a target username.");
+
+            const { data: targetProfile, error: fetchErr } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('username', target)
+                .maybeSingle();
+
+            if (fetchErr || !targetProfile) {
+                return alert(`User "${target}" could not be found.`);
+            }
+
+            if (type === 'warn') {
+                await supabaseClient.from('chat_messages').insert([{
+                    user_id: currentUser.id,
+                    username: 'SYSTEM MODERATION',
+                    channel_id: 'general',
+                    message: `⚠️ OFFICIAL WARNING for @${target}: ${reason}`
+                }]);
+                alert(`Warning issued to ${target}.`);
+
+            } else if (type === 'timeout') {
+                const timeoutDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ 
+                        timeout_until: timeoutDate,
+                        ban_reason: reason 
+                    })
+                    .eq('username', target);
+
+                if (error) return alert("Failed to timeout user: " + error.message);
+                alert(`User ${target} has been timed out for 24 hours.`);
+
+            } else if (type === 'ban') {
+                const { error: banErr } = await supabaseClient
+                    .from('profiles')
+                    .update({ 
+                        is_banned: true, 
+                        ban_reason: reason 
+                    })
+                    .eq('username', target);
+
+                if (banErr) return alert("Failed to ban account: " + banErr.message);
+
+                if (targetProfile.ip_address) {
+                    await supabaseClient.from('ip_bans').upsert([{ 
+                        ip_address: targetProfile.ip_address, 
+                        reason: reason, 
+                        banned_by: currentUser.username 
+                    }], { onConflict: 'ip_address' });
+                }
+
+                alert(`User ${target} and IP (${targetProfile.ip_address || 'N/A'}) have been permanently banned.`);
+            }
+
+            document.getElementById('mod-target-user').value = '';
+            document.getElementById('mod-reason').value = '';
+        }
+
+        // Helper Utility
         function escapeHTML(str) { 
-            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); 
+            return (str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); 
         }
     </script>
 </body>
