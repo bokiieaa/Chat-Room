@@ -9,9 +9,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        #chat-box::-webkit-scrollbar, #updates-box::-webkit-scrollbar { width: 6px; }
-        #chat-box::-webkit-scrollbar-track, #updates-box::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        #chat-box::-webkit-scrollbar-thumb, #updates-box::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
+        #chat-box::-webkit-scrollbar, #updates-box::-webkit-scrollbar, #friends-list::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track, #updates-box::-webkit-scrollbar-track, #friends-list::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        #chat-box::-webkit-scrollbar-thumb, #updates-box::-webkit-scrollbar-thumb, #friends-list::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased">
@@ -78,26 +78,46 @@
         
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
-            <div class="p-4 space-y-6">
-                <div class="flex items-center gap-2 mb-4">
+            <div class="p-4 space-y-5 overflow-y-auto max-h-[calc(100vh-70px)]">
+                <div class="flex items-center gap-2 mb-2">
                     <img src="icon.png" alt="App Icon" class="w-6 h-6 object-contain" onerror="this.style.display='none'">
                     <span class="font-bold text-sm text-slate-200">Mesh Chat</span>
                 </div>
 
+                <!-- Channels Section -->
                 <div>
-                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Channels & Feeds</h2>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Channels & Feeds</h2>
                     <nav class="space-y-1" id="channel-list">
-                        <button data-channel="general" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2"># general</button>
-                        <button data-channel="announcements" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># announcements</button>
-                        <button data-channel="updates" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2">📢 updates</button>
-                        <button data-channel="dev-talk" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># dev-talk</button>
-                        <button data-channel="media" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># media</button>
-                        <button data-channel="off-topic" class="channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># off-topic</button>
+                        <button data-channel="general" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2"># general</button>
+                        <button data-channel="announcements" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># announcements</button>
+                        <button data-channel="updates" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2">📢 updates</button>
+                        <button data-channel="dev-talk" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2"># dev-talk</button>
                     </nav>
                 </div>
 
+                <!-- Direct Messages Section -->
                 <div>
-                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Direct Voice Call</h2>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Direct Messages</h2>
+                    <nav class="space-y-1" id="dm-list">
+                        <p id="no-dms-msg" class="text-[11px] text-slate-500 italic px-2">No active DMs with friends</p>
+                    </nav>
+                </div>
+
+                <!-- Friends System Section -->
+                <div>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Friends</h2>
+                    <div class="space-y-2">
+                        <div class="flex gap-1">
+                            <input type="text" id="friend-username-input" placeholder="Add username..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <button id="add-friend-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg transition-colors cursor-pointer">Add</button>
+                        </div>
+                        <div id="friends-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- Direct Voice Call -->
+                <div>
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Voice Call</h2>
                     <div class="space-y-2">
                         <input type="text" id="target-call-user" placeholder="Target Username..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
                         <button id="start-call-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 rounded-lg transition-colors cursor-pointer">Call User</button>
@@ -113,7 +133,7 @@
                 </div>
             </div>
 
-            <div class="p-4 border-t border-slate-800 flex items-center justify-between">
+            <div class="p-4 border-t border-slate-800 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-2 min-w-0">
                     <div id="user-avatar" class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">?</div>
                     <span id="current-user-display" class="text-xs font-semibold text-slate-300 truncate">Guest</span>
@@ -138,7 +158,7 @@
                         <span>🚀 System Release Update</span>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        Mesh Chat v2.4 initialized. Features WebRTC voice calling with incoming ringtone audio synthesizers, Supabase real-time message sync, and file attachments.
+                        Mesh Chat initialized with tab notifications, direct messaging, and friend systems.
                     </p>
                     <span class="text-[10px] text-slate-500 block">System Log</span>
                 </div>
@@ -184,6 +204,13 @@
         let knownMessageIds = new Set();
         let fastPollingInterval = null;
 
+        // Unread Notification State
+        let unreadCount = 0;
+        let isTabActive = true;
+
+        // Friends & DMs State
+        let userFriends = new Set(); // Stores usernames of confirmed friends
+
         // WebRTC & Ringtone State
         let peerConnection = null;
         let localStream = null;
@@ -224,6 +251,26 @@
         const acceptCallBtn = document.getElementById('accept-call-btn');
         const declineCallBtn = document.getElementById('decline-call-btn');
 
+        // --- TAB VISIBILITY & UNREAD NOTIFICATION HANDLER ---
+        function handleTabFocusChange() {
+            isTabActive = !document.hidden && document.hasFocus();
+            if (isTabActive) {
+                unreadCount = 0;
+                document.title = "Mesh Chat";
+            }
+        }
+
+        window.addEventListener('visibilitychange', handleTabFocusChange);
+        window.addEventListener('blur', () => { isTabActive = false; });
+        window.addEventListener('focus', handleTabFocusChange);
+
+        function triggerUnreadNotification() {
+            if (!isTabActive) {
+                unreadCount++;
+                document.title = `Mesh Chat (${unreadCount})`;
+            }
+        }
+
         // --- AUDIO UNLOCKER FOR RECEIVING CALLS ---
         function unlockAudio() {
             try {
@@ -249,27 +296,17 @@
                 
                 const playPromise = ringtoneAudio.play();
                 if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        console.log("ringtone.mp3 playing...");
-                    }).catch(err => {
-                        console.warn("ringtone.mp3 blocked/missing. Falling back to synth sound:", err);
-                        playFallbackSynthRingtone();
-                    });
+                    playPromise.then(() => {}).catch(err => playFallbackSynthRingtone());
                 }
             } catch (err) {
-                console.warn("Audio error. Falling back to synth sound:", err);
                 playFallbackSynthRingtone();
             }
         }
 
         function playFallbackSynthRingtone() {
             try {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
 
                 function playBurst() {
                     if (!audioCtx) return;
@@ -295,9 +332,7 @@
 
                 playBurst();
                 ringtoneInterval = setInterval(playBurst, 3000);
-            } catch(e) {
-                console.error("Synth ringer failed:", e);
-            }
+            } catch(e) {}
         }
 
         function stopRingtone() {
@@ -383,6 +418,8 @@
             addSystemUpdate(`User <b>${escapeHTML(username)}</b> connected to node.`);
 
             listenToPersonalSignaling();
+            loadFriends();
+            listenToFriendsRealtime();
             loadChannelMessages();
             startFastPolling();
             listenToRealtimeMessages();
@@ -391,6 +428,157 @@
         document.getElementById('logout-btn').addEventListener('click', () => {
             window.location.reload();
         });
+
+        // --- FRIENDS & DIRECT MESSAGING SYSTEM ---
+
+        function getDMChannelID(username1, username2) {
+            const sorted = [username1, username2].sort();
+            return `dm_${sorted[0]}_${sorted[1]}`;
+        }
+
+        document.getElementById('add-friend-btn').addEventListener('click', async () => {
+            const input = document.getElementById('friend-username-input');
+            const targetUsername = input.value.trim();
+            if (!targetUsername) return;
+            if (targetUsername === currentUser.username) return alert("You cannot add yourself.");
+
+            const { data: targetUser } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('username', targetUsername)
+                .maybeSingle();
+
+            if (!targetUser) return alert("User not found.");
+
+            // Check existing relationship
+            const { data: existing } = await supabaseClient
+                .from('friends')
+                .select('*')
+                .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${targetUser.id}),and(user_id.eq.${targetUser.id},friend_id.eq.${currentUser.id})`)
+                .maybeSingle();
+
+            if (existing) {
+                if (existing.status === 'accepted') alert("You are already friends!");
+                else alert("A friend request is already pending.");
+                return;
+            }
+
+            const { error } = await supabaseClient.from('friends').insert([{
+                user_id: currentUser.id,
+                friend_id: targetUser.id,
+                status: 'pending'
+            }]);
+
+            if (error) alert("Error sending request: " + error.message);
+            else {
+                alert(`Friend request sent to ${targetUsername}!`);
+                input.value = '';
+                loadFriends();
+            }
+        });
+
+        async function loadFriends() {
+            if (!currentUser) return;
+
+            const { data: records } = await supabaseClient
+                .from('friends')
+                .select(`
+                    id, user_id, friend_id, status,
+                    user_profile:profiles!user_id(id, username),
+                    friend_profile:profiles!friend_id(id, username)
+                `)
+                .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`);
+
+            userFriends.clear();
+            const friendsListEl = document.getElementById('friends-list');
+            const dmListEl = document.getElementById('dm-list');
+            friendsListEl.innerHTML = '';
+            dmListEl.innerHTML = '';
+
+            let hasDMs = false;
+
+            if (records) {
+                records.forEach(req => {
+                    const isSender = req.user_id === currentUser.id;
+                    const otherUser = isSender ? req.friend_profile : req.user_profile;
+
+                    if (!otherUser) return;
+
+                    const item = document.createElement('div');
+                    item.className = "flex items-center justify-between text-xs bg-slate-950 p-2 rounded-lg border border-slate-800 gap-1";
+
+                    if (req.status === 'accepted') {
+                        userFriends.add(otherUser.username);
+                        hasDMs = true;
+
+                        item.innerHTML = `
+                            <span class="font-semibold text-slate-300 truncate">${escapeHTML(otherUser.username)}</span>
+                            <div class="flex gap-1 shrink-0">
+                                <button onclick="openDM('${escapeHTML(otherUser.username)}')" class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer">DM</button>
+                                <button onclick="removeFriend('${req.id}')" class="text-rose-400 hover:text-rose-300 text-[10px] px-1 cursor-pointer">✕</button>
+                            </div>
+                        `;
+
+                        // Add to Direct Messages Navigation Sidebar
+                        const dmBtn = document.createElement('button');
+                        const channelId = getDMChannelID(currentUser.username, otherUser.username);
+                        dmBtn.dataset.channel = channelId;
+                        dmBtn.className = "channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2";
+                        dmBtn.innerHTML = `💬 ${escapeHTML(otherUser.username)}`;
+                        dmBtn.onclick = () => selectChannel(dmBtn, channelId, `@ ${otherUser.username}`);
+                        dmListEl.appendChild(dmBtn);
+
+                    } else if (req.status === 'pending') {
+                        if (isSender) {
+                            item.innerHTML = `
+                                <span class="text-slate-400 italic truncate">${escapeHTML(otherUser.username)} (Pending)</span>
+                            `;
+                        } else {
+                            item.innerHTML = `
+                                <span class="font-semibold text-slate-200 truncate">${escapeHTML(otherUser.username)}</span>
+                                <div class="flex gap-1 shrink-0">
+                                    <button onclick="acceptFriend('${req.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer">Accept</button>
+                                    <button onclick="removeFriend('${req.id}')" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer">Decline</button>
+                                </div>
+                            `;
+                        }
+                    }
+                    friendsListEl.appendChild(item);
+                });
+            }
+
+            if (!hasDMs) {
+                dmListEl.innerHTML = '<p id="no-dms-msg" class="text-[11px] text-slate-500 italic px-2">No active DMs with friends</p>';
+            }
+        }
+
+        async function acceptFriend(id) {
+            await supabaseClient.from('friends').update({ status: 'accepted' }).eq('id', id);
+            loadFriends();
+        }
+
+        async function removeFriend(id) {
+            await supabaseClient.from('friends').delete().eq('id', id);
+            loadFriends();
+        }
+
+        function openDM(targetUsername) {
+            if (!userFriends.has(targetUsername)) {
+                return alert("You can only DM users who are on your friends list.");
+            }
+            const channelId = getDMChannelID(currentUser.username, targetUsername);
+            const btn = document.querySelector(`button[data-channel="${channelId}"]`);
+            if (btn) btn.click();
+        }
+
+        function listenToFriendsRealtime() {
+            supabaseClient
+                .channel('public:friends')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => {
+                    loadFriends();
+                })
+                .subscribe();
+        }
 
         // --- FILE SELECTION ---
         mediaFileInput.addEventListener('change', (e) => {
@@ -422,34 +610,48 @@
         }
 
         // --- CHANNELS SWITCHING ---
-        document.querySelectorAll('.channel-btn').forEach(btn => {
+        function selectChannel(btn, channelId, displayTitle) {
+            document.querySelectorAll('.channel-btn').forEach(b => {
+                b.className = "channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2";
+            });
+            btn.className = "channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2";
+            
+            activeChannel = channelId;
+            
+            if (activeChannel === 'updates') {
+                document.getElementById('active-channel-title').textContent = `📢 updates`;
+                chatBox.classList.add('hidden');
+                updatesBox.classList.remove('hidden');
+                chatFooter.classList.add('hidden');
+            } else {
+                document.getElementById('active-channel-title').textContent = displayTitle || `# ${activeChannel}`;
+                updatesBox.classList.add('hidden');
+                chatBox.classList.remove('hidden');
+                chatFooter.classList.remove('hidden');
+                knownMessageIds.clear();
+                chatBox.innerHTML = '';
+                loadChannelMessages();
+            }
+        }
+
+        document.querySelectorAll('#channel-list .channel-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.channel-btn').forEach(b => {
-                    b.className = "channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2";
-                });
-                btn.className = "channel-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-2";
-                
-                activeChannel = btn.dataset.channel;
-                
-                if (activeChannel === 'updates') {
-                    document.getElementById('active-channel-title').textContent = `📢 updates`;
-                    chatBox.classList.add('hidden');
-                    updatesBox.classList.remove('hidden');
-                    chatFooter.classList.add('hidden');
-                } else {
-                    document.getElementById('active-channel-title').textContent = `# ${activeChannel}`;
-                    updatesBox.classList.add('hidden');
-                    chatBox.classList.remove('hidden');
-                    chatFooter.classList.remove('hidden');
-                    knownMessageIds.clear();
-                    chatBox.innerHTML = '';
-                    loadChannelMessages();
-                }
+                selectChannel(btn, btn.dataset.channel, btn.textContent.trim());
             });
         });
 
         async function loadChannelMessages() {
             if (activeChannel === 'updates') return;
+
+            // DM Permission Check: Ensure users are friends if loading DM channel
+            if (activeChannel.startsWith('dm_')) {
+                const parts = activeChannel.replace('dm_', '').split('_');
+                const otherUsername = parts.find(u => u !== currentUser.username);
+                if (otherUsername && !userFriends.has(otherUsername)) {
+                    chatBox.innerHTML = `<div class="p-4 text-center text-rose-400 text-xs">You can only direct message users who are on your friends list.</div>`;
+                    return;
+                }
+            }
 
             const { data } = await supabaseClient
                 .from('chat_messages')
@@ -529,6 +731,15 @@
             const text = msgInput.value.trim();
             if ((!text && !selectedFile) || !currentUser) return;
 
+            // Restrict posting DM messages if not friends
+            if (activeChannel.startsWith('dm_')) {
+                const parts = activeChannel.replace('dm_', '').split('_');
+                const otherUsername = parts.find(u => u !== currentUser.username);
+                if (otherUsername && !userFriends.has(otherUsername)) {
+                    return alert("Cannot send message. You must be friends to exchange DMs.");
+                }
+            }
+
             const sendBtn = document.getElementById('send-btn');
             sendBtn.disabled = true;
             sendBtn.textContent = '...';
@@ -590,6 +801,11 @@
                     if (payload.new.channel_id === activeChannel && !knownMessageIds.has(payload.new.id)) {
                         knownMessageIds.add(payload.new.id);
                         appendMessageUI(payload.new);
+                    }
+
+                    // Trigger title notification ONLY if off tab and message is from another user
+                    if (payload.new.username !== currentUser?.username) {
+                        triggerUnreadNotification();
                     }
                 }).subscribe();
         }
@@ -653,6 +869,7 @@
 
             addSystemUpdate(`Incoming call from <b>${escapeHTML(payload.callerUsername)}</b>`);
             playRingtone();
+            triggerUnreadNotification();
         }
 
         acceptCallBtn.addEventListener('click', async () => {
