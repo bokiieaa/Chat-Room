@@ -165,7 +165,7 @@
                         <span>🚀 System Release Update</span>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        Mesh Chat initialized with tab notifications, direct messaging, friend systems, and profile picture customization.
+                        Mesh Chat initialized with tab notifications, direct messaging, friend systems, YouTube embedded player (videos, Shorts, live streams), and profile picture customization.
                     </p>
                     <span class="text-[10px] text-slate-500 block">System Log</span>
                 </div>
@@ -207,10 +207,12 @@
         let currentUser = null;
         let activeChannel = 'general';
         let activeReplyId = null;
+        let activeReplyUser = null;
+        let activeReplyText = null;
         let selectedFile = null;
         let knownMessageIds = new Set();
         let fastPollingInterval = null;
-        let userAvatarCache = new Map(); // Cache profile avatars
+        let userAvatarCache = new Map();
 
         // Unread Notification State
         let unreadCount = 0;
@@ -259,6 +261,24 @@
         const incomingCallerName = document.getElementById('incoming-caller-name');
         const acceptCallBtn = document.getElementById('accept-call-btn');
         const declineCallBtn = document.getElementById('decline-call-btn');
+
+        // --- YOUTUBE EMBED HELPER ---
+        function extractYouTubeLinks(text) {
+            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/gi;
+            let match;
+            const embeds = [];
+            
+            while ((match = ytRegex.exec(text)) !== null) {
+                const videoId = match[1];
+                const isShort = match[0].includes('/shorts/');
+                embeds.push({
+                    url: match[0],
+                    videoId: videoId,
+                    isShort: isShort
+                });
+            }
+            return embeds;
+        }
 
         // --- TAB VISIBILITY & UNREAD NOTIFICATION HANDLER ---
         function handleTabFocusChange() {
@@ -755,7 +775,16 @@
 
             const userAvatarUrl = await fetchUserAvatar(msg.username);
 
-            let replyHeader = msg.reply_to_id ? `<div class="text-[10px] text-indigo-400 font-mono mb-1">Replying to #${msg.reply_to_id}</div>` : '';
+            // Detailed quoted reply Header
+            let replyHeader = '';
+            if (msg.reply_to_user || msg.reply_to_text) {
+                replyHeader = `
+                    <div class="text-[11px] text-indigo-300 bg-indigo-950/40 border-l-2 border-indigo-500 pl-2 py-1 rounded-r mb-2.5 truncate">
+                        Replying to <b class="text-indigo-400">@${escapeHTML(msg.reply_to_user || 'User')}</b>: "<span class="italic text-slate-300">${escapeHTML(msg.reply_to_text || 'Media')}</span>"
+                    </div>`;
+            } else if (msg.reply_to_id) {
+                replyHeader = `<div class="text-[10px] text-indigo-400 font-mono mb-1">Replying to message #${msg.reply_to_id}</div>`;
+            }
             
             let mediaContent = '';
             if (msg.media_url) {
@@ -772,6 +801,19 @@
                 }
             }
 
+            // Parse YouTube links
+            let ytEmbedsHtml = '';
+            if (msg.message) {
+                const ytLinks = extractYouTubeLinks(msg.message);
+                ytLinks.forEach(item => {
+                    const aspectClass = item.isShort ? "w-full max-w-[280px] aspect-[9/16]" : "w-full max-w-xl aspect-video";
+                    ytEmbedsHtml += `
+                        <div class="mt-2.5 rounded-xl overflow-hidden border border-slate-800 bg-black ${aspectClass}">
+                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${item.videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                        </div>`;
+                });
+            }
+
             const avatarHTML = userAvatarUrl 
                 ? `<img src="${escapeHTML(userAvatarUrl)}" class="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5 border border-slate-700">`
                 : `<div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 border border-slate-700">${escapeHTML(msg.username.charAt(0).toUpperCase())}</div>`;
@@ -785,6 +827,7 @@
                         <span class="text-[10px] text-slate-500 shrink-0">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                     </div>
                     ${msg.message ? `<p class="text-xs text-slate-300 leading-relaxed overflow-hidden break-words mt-1">${escapeHTML(msg.message)}</p>` : ''}
+                    ${ytEmbedsHtml}
                     ${mediaContent}
                 </div>
                 <button onclick="setReplyTarget(${msg.id}, '${escapeHTML(msg.username)}', '${escapeHTML(msg.message || 'Media file')}')" class="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded transition-opacity cursor-pointer">Reply</button>
@@ -795,6 +838,8 @@
 
         function setReplyTarget(id, username, text) {
             activeReplyId = id;
+            activeReplyUser = username;
+            activeReplyText = text;
             document.getElementById('reply-target-user').textContent = username;
             document.getElementById('reply-target-text').textContent = text;
             replyPreview.classList.remove('hidden');
@@ -802,6 +847,8 @@
 
         document.getElementById('cancel-reply-btn').addEventListener('click', () => {
             activeReplyId = null;
+            activeReplyUser = null;
+            activeReplyText = null;
             replyPreview.classList.add('hidden');
         });
 
@@ -854,6 +901,8 @@
                 channel_id: activeChannel,
                 message: text,
                 reply_to_id: activeReplyId,
+                reply_to_user: activeReplyUser,
+                reply_to_text: activeReplyText,
                 media_url: mediaUrl
             };
 
@@ -862,6 +911,8 @@
             mediaFileInput.value = '';
             filePreview.classList.add('hidden');
             activeReplyId = null;
+            activeReplyUser = null;
+            activeReplyText = null;
             replyPreview.classList.add('hidden');
 
             const { error } = await supabaseClient.from('chat_messages').insert([payload]);
@@ -1073,7 +1124,7 @@
         }
 
         function escapeHTML(str) { 
-            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); 
+            return (str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); 
         }
     </script>
 </body>
