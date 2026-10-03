@@ -51,9 +51,12 @@
         <!-- Sidebar Navigation / Players & Chat -->
         <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
             <div class="p-4 space-y-4 flex-1 flex flex-col min-h-0">
-                <div class="flex items-center gap-2">
-                    <img src="icon.png" alt="App Icon" class="w-6 h-6 object-contain" onerror="this.style.display='none'">
-                    <span class="font-bold text-sm text-slate-200">Mesh Gartic Phone</span>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <img src="icon.png" alt="App Icon" class="w-6 h-6 object-contain" onerror="this.style.display='none'">
+                        <span class="font-bold text-sm text-slate-200">Mesh Gartic Phone</span>
+                    </div>
+                    <button id="sidebar-leave-btn" class="hidden text-xs bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold px-2 py-1 rounded transition-colors cursor-pointer">Leave Room</button>
                 </div>
 
                 <!-- Room Players List -->
@@ -93,12 +96,22 @@
                     <h1 id="stage-title" class="text-base font-bold text-slate-200">Lobby Browser</h1>
                     <p id="stage-subtitle" class="text-xs text-slate-400">Join a public room or create your own custom lobby</p>
                 </div>
-                <div id="room-code-display" class="hidden text-xs bg-slate-800 border border-slate-700 px-3 py-1 rounded-lg text-indigo-300 font-mono font-bold"></div>
+                <div class="flex items-center gap-2">
+                    <div id="room-code-display" class="hidden text-xs bg-slate-800 border border-slate-700 px-3 py-1 rounded-lg text-indigo-300 font-mono font-bold"></div>
+                    <button id="header-leave-btn" class="hidden text-xs bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold px-3 py-1 rounded-lg transition-colors cursor-pointer">Leave</button>
+                </div>
             </header>
 
             <!-- Game Viewport -->
             <div id="game-container" class="flex-1 p-4 flex flex-col items-center justify-center relative overflow-hidden">
                 
+                <!-- Submission Overlay Screen -->
+                <div id="submitted-overlay" class="hidden absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-bold text-xl animate-pulse">✓</div>
+                    <h2 class="text-xl font-bold text-slate-100">Submitted!</h2>
+                    <p id="submitted-status-text" class="text-xs text-slate-400 max-w-sm">Waiting for other players to finish their turn...</p>
+                </div>
+
                 <!-- Screen 1: Lobby Selection -->
                 <div id="lobby-screen" class="w-full max-w-xl space-y-4">
                     
@@ -125,11 +138,13 @@
                         </div>
                     </div>
 
-                    <!-- 5 Default Public Lobbies Browser -->
+                    <!-- Public Lobbies Browser -->
                     <div class="bg-slate-900 p-4 border border-slate-800 rounded-xl space-y-3">
                         <div class="flex items-center justify-between">
                             <h3 class="text-sm font-bold text-slate-200">Public Lobbies</h3>
-                            <span class="text-[10px] text-slate-500 font-bold">CLICK TO JOIN</span>
+                            <button id="refresh-lobbies-btn" class="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer">
+                                🔄 Refresh Lobbies
+                            </button>
                         </div>
                         <div id="public-lobbies-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
                     </div>
@@ -139,17 +154,9 @@
                 <!-- Screen 2: Waiting Room -->
                 <div id="waiting-room-screen" class="hidden text-center space-y-4 max-w-md w-full">
                     <h2 class="text-lg font-bold text-slate-200">Waiting Room</h2>
-                    <p id="countdown-status" class="text-xs text-slate-400">Waiting for at least 3 players to start...</p>
-
-                    <!-- Countdown Display Box -->
-                    <div id="countdown-timer-box" class="hidden bg-slate-900 border border-indigo-500/30 p-6 rounded-2xl max-w-xs mx-auto space-y-1 shadow-xl">
-                        <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Game Starting In</div>
-                        <div id="countdown-number" class="text-5xl font-black text-white">10</div>
-                        <div class="text-[10px] text-slate-500">Timer resets if a new player joins!</div>
-                    </div>
-
+                    <p class="text-xs text-slate-400">Share your Room ID with friends to join!</p>
                     <div id="start-game-wrapper" class="hidden pt-2">
-                        <button id="start-game-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Force Start Game Now</button>
+                        <button id="start-game-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Start Game</button>
                     </div>
                 </div>
 
@@ -157,7 +164,7 @@
                 <div id="prompt-screen" class="hidden w-full max-w-lg space-y-4">
                     <div class="text-center">
                         <h3 class="text-lg font-bold text-slate-100">Write a Prompt</h3>
-                        <p class="text-xs text-slate-400">Write a funny scenario for another player to draw!</p>
+                        <p class="text-xs text-slate-400">Write a funny scenario for the next player to draw!</p>
                     </div>
                     <input type="text" id="prompt-input" placeholder="e.g., A cat astronaut drinking coffee on Mars..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                     <button id="submit-prompt-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Submit Prompt</button>
@@ -195,7 +202,7 @@
                     <div class="bg-white rounded-xl overflow-hidden border border-slate-800 shadow-xl max-w-full">
                         <img id="guess-target-img" class="max-h-60 object-contain mx-auto" alt="Drawing to guess">
                     </div>
-                    <input type="text" id="guess-input" placeholder="Type your guess here..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="guess-input" placeholder="Type your guess here (this becomes the next prompt!)..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                     <button id="submit-guess-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Submit Guess</button>
                 </div>
 
@@ -203,7 +210,7 @@
                 <div id="album-screen" class="hidden w-full max-w-2xl flex-1 flex flex-col min-h-0 space-y-4">
                     <div class="text-center shrink-0">
                         <h2 class="text-xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Game Reveal Album</h2>
-                        <p class="text-xs text-slate-400">Look at how the drawings evolved live!</p>
+                        <p class="text-xs text-slate-400">Here is how all the prompts evolved across every player!</p>
                     </div>
                     <div id="game-album" class="flex-1 overflow-y-auto space-y-6 pr-2"></div>
                     <button id="return-lobby-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer shrink-0">Return to Lobby</button>
@@ -218,7 +225,6 @@
         const SUPABASE_ANON_KEY = "sb_publishable_e_CqJETIOnvnJY5U4twlow_J9n1muxx";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Default 5 Public Lobbies
         const DEFAULT_PUBLIC_LOBBIES = [
             "Main Lobby",
             "Casual Drawers",
@@ -234,14 +240,11 @@
         let isHost = false;
         let roomPlayers = [];
 
-        // Countdown State
-        let countdownInterval = null;
-        let countdownSeconds = 10;
-        let previousPlayerCount = 0;
-
-        let currentPrompt = "";
-        let receivedDrawing = "";
-        let currentGuess = "";
+        // Game Turn Pipeline State
+        let currentRound = 0;
+        let totalRounds = 0;
+        let playerChains = {}; // Map of initial creator -> array of turn objects
+        let completedTurnsThisRound = 0;
 
         // DOM Elements
         const authModal = document.getElementById('auth-modal');
@@ -255,9 +258,7 @@
         const playerCount = document.getElementById('player-count');
         const publicLobbiesList = document.getElementById('public-lobbies-list');
         const roomCreateError = document.getElementById('room-create-error');
-        const countdownTimerBox = document.getElementById('countdown-timer-box');
-        const countdownNumber = document.getElementById('countdown-number');
-        const countdownStatus = document.getElementById('countdown-status');
+        const submittedOverlay = document.getElementById('submitted-overlay');
 
         // Canvas Setup
         const canvas = document.getElementById('paint-canvas');
@@ -364,6 +365,10 @@
             });
         }
 
+        document.getElementById('refresh-lobbies-btn').addEventListener('click', () => {
+            renderPublicLobbies();
+        });
+
         document.getElementById('create-room-btn').addEventListener('click', async () => {
             roomCreateError.classList.add('hidden');
             const roomId = document.getElementById('new-room-id').value.trim();
@@ -373,7 +378,6 @@
                 return showRoomCreateError("Please enter a room name/ID.");
             }
 
-            // Check if Room ID is already taken
             const isTakenInPublic = activePublicLobbies.some(l => l.toLowerCase() === roomId.toLowerCase());
             
             if (isTakenInPublic) {
@@ -401,16 +405,40 @@
             roomCreateError.classList.remove('hidden');
         }
 
+        function leaveCurrentRoom() {
+            if (activeChannel) {
+                activeChannel.unsubscribe();
+                supabaseClient.removeChannel(activeChannel);
+                activeChannel = null;
+            }
+            currentRoomCode = null;
+            isHost = false;
+            roomPlayers = [];
+
+            document.getElementById('room-code-display').classList.add('hidden');
+            document.getElementById('sidebar-leave-btn').classList.add('hidden');
+            document.getElementById('header-leave-btn').classList.add('hidden');
+            document.getElementById('game-status-badge').textContent = "Offline";
+            document.getElementById('stage-title').textContent = "Lobby Browser";
+            document.getElementById('stage-subtitle').textContent = "Join a public room or create your own custom lobby";
+            
+            submittedOverlay.classList.add('hidden');
+            renderPlayers([]);
+            showScreen('lobby');
+        }
+
+        document.getElementById('sidebar-leave-btn').addEventListener('click', leaveCurrentRoom);
+        document.getElementById('header-leave-btn').addEventListener('click', leaveCurrentRoom);
+
         function joinRealtimeRoom(roomCode) {
             currentRoomCode = roomCode;
             document.getElementById('room-code-display').textContent = roomCode;
             document.getElementById('room-code-display').classList.remove('hidden');
+            document.getElementById('sidebar-leave-btn').classList.remove('hidden');
+            document.getElementById('header-leave-btn').classList.remove('hidden');
             document.getElementById('game-status-badge').textContent = "In Room";
 
             if (activeChannel) supabaseClient.removeChannel(activeChannel);
-
-            stopCountdown();
-            previousPlayerCount = 0;
 
             const sanitizedChannelName = `gartic-room-${roomCode.replace(/\s+/g, '-').toLowerCase()}`;
 
@@ -418,57 +446,69 @@
                 config: { presence: { key: currentUser.username } }
             });
 
-            // Realtime presence and auto-countdown logic
             activeChannel
                 .on('presence', { event: 'sync' }, () => {
                     const state = activeChannel.presenceState();
                     roomPlayers = Object.keys(state).map(k => ({ username: k }));
                     renderPlayers(roomPlayers);
-
-                    const count = roomPlayers.length;
-
-                    // AUTO COUNTDOWN LOGIC:
-                    if (count >= 3) {
-                        // Reset timer if a new player joins while waiting
-                        if (count > previousPlayerCount && countdownInterval !== null) {
-                            resetCountdown();
-                            appendChatMessage("System", "A new player joined! Timer reset to 10s.");
-                        } else if (countdownInterval === null) {
-                            startCountdown();
-                        }
-                    } else {
-                        stopCountdown();
-                        countdownStatus.textContent = `Waiting for at least 3 players... (${count}/3)`;
-                    }
-
-                    previousPlayerCount = count;
                 })
                 .on('broadcast', { event: 'chat' }, payload => {
                     appendChatMessage(payload.payload.username, payload.payload.text);
                 })
-                .on('broadcast', { event: 'game-start' }, () => {
-                    stopCountdown();
-                    document.getElementById('stage-title').textContent = "Round 1: Prompt Phase";
-                    document.getElementById('stage-subtitle').textContent = "Write your creative prompt";
+                .on('broadcast', { event: 'game-start' }, payload => {
+                    currentRound = 0;
+                    totalRounds = payload.payload.totalRounds;
+                    playerChains = {};
+                    completedTurnsThisRound = 0;
+                    
+                    document.getElementById('stage-title').textContent = `Round 1 of ${totalRounds}: Initial Prompt`;
+                    document.getElementById('stage-subtitle').textContent = "Write a prompt for another player to draw";
+                    submittedOverlay.classList.add('hidden');
+                    document.getElementById('prompt-input').value = "";
                     showScreen('prompt');
                 })
-                .on('broadcast', { event: 'send-prompt' }, payload => {
-                    currentPrompt = payload.payload.prompt;
-                    document.getElementById('drawing-prompt-text').textContent = currentPrompt;
-                    document.getElementById('stage-title').textContent = "Round 2: Drawing Phase";
-                    document.getElementById('stage-subtitle').textContent = "Draw the prompt";
-                    showScreen('canvas');
+                .on('broadcast', { event: 'turn-submitted' }, payload => {
+                    if (!isHost) return;
+
+                    const { ownerIndex, roundIndex, type, author, content } = payload.payload;
+                    const chainOwner = roomPlayers[ownerIndex].username;
+
+                    if (!playerChains[chainOwner]) playerChains[chainOwner] = [];
+                    playerChains[chainOwner].push({ type, author, content });
+
+                    completedTurnsThisRound++;
+
+                    if (completedTurnsThisRound >= roomPlayers.length) {
+                        completedTurnsThisRound = 0;
+                        const nextRound = roundIndex + 1;
+
+                        if (nextRound >= totalRounds) {
+                            activeChannel.send({
+                                type: 'broadcast',
+                                event: 'game-over',
+                                payload: { playerChains }
+                            });
+                        } else {
+                            activeChannel.send({
+                                type: 'broadcast',
+                                event: 'advance-round',
+                                payload: { nextRound, playerChains }
+                            });
+                        }
+                    }
                 })
-                .on('broadcast', { event: 'send-drawing' }, payload => {
-                    receivedDrawing = payload.payload.drawing;
-                    document.getElementById('guess-target-img').src = receivedDrawing;
-                    document.getElementById('stage-title').textContent = "Round 3: Guessing Phase";
-                    document.getElementById('stage-subtitle').textContent = "Guess what was drawn!";
-                    showScreen('guess');
+                .on('broadcast', { event: 'advance-round' }, payload => {
+                    currentRound = payload.payload.nextRound;
+                    playerChains = payload.payload.playerChains;
+                    submittedOverlay.classList.add('hidden');
+                    setupRoundForUser();
                 })
-                .on('broadcast', { event: 'send-guess' }, payload => {
-                    currentGuess = payload.payload.guess;
+                .on('broadcast', { event: 'game-over' }, payload => {
+                    playerChains = payload.payload.playerChains;
+                    submittedOverlay.classList.add('hidden');
                     renderAlbum();
+                    document.getElementById('stage-title').textContent = "Game Complete!";
+                    document.getElementById('stage-subtitle').textContent = "Review the progression album below";
                     showScreen('album');
                 })
                 .subscribe(async (status) => {
@@ -486,38 +526,54 @@
                 });
         }
 
-        // --- AUTOMATIC LOBBY COUNTDOWN TIMER ---
-        function startCountdown() {
-            stopCountdown();
-            countdownSeconds = 10;
-            countdownNumber.textContent = countdownSeconds;
-            countdownTimerBox.classList.remove('hidden');
-            countdownStatus.textContent = "Lobby full! Game starting automatically...";
+        function setupRoundForUser() {
+            const myIndex = roomPlayers.findIndex(p => p.username === currentUser.username);
+            const numPlayers = roomPlayers.length;
+            
+            // Calculate which chain this user receives this round (Rotation)
+            const chainOwnerIndex = (myIndex - currentRound + numPlayers) % numPlayers;
+            const chainOwner = roomPlayers[chainOwnerIndex].username;
+            const chain = playerChains[chainOwner] || [];
+            const previousTurn = chain[chain.length - 1];
 
-            countdownInterval = setInterval(() => {
-                countdownSeconds--;
-                countdownNumber.textContent = countdownSeconds;
-
-                if (countdownSeconds <= 0) {
-                    stopCountdown();
-                    if (isHost) {
-                        activeChannel.send({ type: 'broadcast', event: 'game-start', payload: {} });
-                    }
-                }
-            }, 1000);
-        }
-
-        function resetCountdown() {
-            countdownSeconds = 10;
-            countdownNumber.textContent = countdownSeconds;
-        }
-
-        function stopCountdown() {
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
-                countdownInterval = null;
+            if (currentRound % 2 === 1) {
+                // Drawing Round (from prompt)
+                document.getElementById('drawing-prompt-text').textContent = previousTurn ? previousTurn.content : "...";
+                document.getElementById('stage-title').textContent = `Round ${currentRound + 1} of ${totalRounds}: Drawing Phase`;
+                document.getElementById('stage-subtitle').textContent = `Draw the prompt given by ${previousTurn ? previousTurn.author : 'someone'}`;
+                
+                // Clear canvas
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                showScreen('canvas');
+            } else {
+                // Guess / Prompt Round (from drawing)
+                document.getElementById('guess-target-img').src = previousTurn ? previousTurn.content : "";
+                document.getElementById('guess-input').value = "";
+                document.getElementById('stage-title').textContent = `Round ${currentRound + 1} of ${totalRounds}: Guessing Phase`;
+                document.getElementById('stage-subtitle').textContent = `Guess what ${previousTurn ? previousTurn.author : 'the artist'} drew!`;
+                showScreen('guess');
             }
-            countdownTimerBox.classList.add('hidden');
+        }
+
+        function submitUserTurn(type, content) {
+            const myIndex = roomPlayers.findIndex(p => p.username === currentUser.username);
+            const numPlayers = roomPlayers.length;
+            const chainOwnerIndex = (myIndex - currentRound + numPlayers) % numPlayers;
+
+            activeChannel.send({
+                type: 'broadcast',
+                event: 'turn-submitted',
+                payload: {
+                    ownerIndex: chainOwnerIndex,
+                    roundIndex: currentRound,
+                    type: type,
+                    author: currentUser.username,
+                    content: content
+                }
+            });
+
+            submittedOverlay.classList.remove('hidden');
         }
 
         function renderPlayers(players) {
@@ -603,7 +659,7 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         });
 
-        // --- GAME FLOW ---
+        // --- GAME FLOW SCREEN SWITCHING ---
         const screens = {
             lobby: document.getElementById('lobby-screen'),
             waiting: document.getElementById('waiting-room-screen'),
@@ -619,49 +675,72 @@
         }
 
         document.getElementById('start-game-btn').addEventListener('click', () => {
-            stopCountdown();
-            activeChannel.send({ type: 'broadcast', event: 'game-start', payload: {} });
+            if (roomPlayers.length < 1) return alert("You need players in the room to start!");
+            
+            // Number of rounds equals number of players or minimum 3 for small groups
+            const calculatedRounds = roomPlayers.length === 1 ? 3 : roomPlayers.length;
+            
+            activeChannel.send({
+                type: 'broadcast',
+                event: 'game-start',
+                payload: { totalRounds: calculatedRounds }
+            });
         });
 
         document.getElementById('submit-prompt-btn').addEventListener('click', () => {
             const promptVal = document.getElementById('prompt-input').value.trim() || "A dragon eating pizza";
-            activeChannel.send({ type: 'broadcast', event: 'send-prompt', payload: { prompt: promptVal } });
+            submitUserTurn('prompt', promptVal);
         });
 
         document.getElementById('submit-canvas-btn').addEventListener('click', () => {
             const drawingData = canvas.toDataURL();
-            activeChannel.send({ type: 'broadcast', event: 'send-drawing', payload: { drawing: drawingData } });
+            submitUserTurn('drawing', drawingData);
         });
 
         document.getElementById('submit-guess-btn').addEventListener('click', () => {
-            const guessVal = document.getElementById('guess-input').value.trim() || "A drawing";
-            activeChannel.send({ type: 'broadcast', event: 'send-guess', payload: { guess: guessVal } });
+            const guessVal = document.getElementById('guess-input').value.trim() || "A mystery drawing";
+            submitUserTurn('prompt', guessVal);
         });
 
         document.getElementById('return-lobby-btn').addEventListener('click', () => {
-            showScreen('lobby');
+            showScreen('waiting');
         });
 
+        // --- ALBUM REVEAL ---
         function renderAlbum() {
             const album = document.getElementById('game-album');
-            album.innerHTML = `
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-4">
-                    <div class="border-b border-slate-800 pb-2">
-                        <span class="text-[10px] uppercase font-bold text-slate-500">Prompt</span>
-                        <p class="text-sm font-bold text-indigo-300">"${escapeHTML(currentPrompt)}"</p>
-                    </div>
-                    <div class="border-b border-slate-800 pb-2">
-                        <span class="text-[10px] uppercase font-bold text-slate-500">Synced Drawing</span>
-                        <div class="bg-white rounded-lg p-2 max-w-sm mx-auto mt-1 border border-slate-800">
-                            <img src="${receivedDrawing}" class="w-full h-auto rounded">
-                        </div>
-                    </div>
-                    <div>
-                        <span class="text-[10px] uppercase font-bold text-slate-500">Final Guess</span>
-                        <p class="text-sm font-bold text-emerald-400">"${escapeHTML(currentGuess)}"</p>
-                    </div>
-                </div>
-            `;
+            album.innerHTML = '';
+
+            Object.keys(playerChains).forEach((owner, idx) => {
+                const chain = playerChains[owner];
+                const section = document.createElement('div');
+                section.className = "bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-4";
+                
+                let chainHTML = `<h3 class="text-sm font-bold text-indigo-400 border-b border-slate-800 pb-2">Chain ${idx + 1} (Started by ${escapeHTML(owner)})</h3>`;
+                
+                chain.forEach(step => {
+                    if (step.type === 'prompt') {
+                        chainHTML += `
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                                <span class="text-[10px] uppercase font-bold text-slate-500">${escapeHTML(step.author)} wrote:</span>
+                                <p class="text-sm font-bold text-slate-200">"${escapeHTML(step.content)}"</p>
+                            </div>
+                        `;
+                    } else if (step.type === 'drawing') {
+                        chainHTML += `
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+                                <span class="text-[10px] uppercase font-bold text-slate-500 block text-left mb-1">${escapeHTML(step.author)} drew:</span>
+                                <div class="bg-white rounded-lg p-2 max-w-sm mx-auto inline-block border border-slate-800">
+                                    <img src="${step.content}" class="w-full h-auto rounded">
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                section.innerHTML = chainHTML;
+                album.appendChild(section);
+            });
         }
 
         function escapeHTML(str) { 
