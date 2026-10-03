@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gartic Phone - Mesh Network Edition</title>
+    <title>Gartic Phone - Sequential Mesh Edition</title>
     <link rel="icon" type="image/png" href="icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -107,9 +107,9 @@
                 
                 <!-- Submission Overlay Screen -->
                 <div id="submitted-overlay" class="hidden absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6 space-y-3">
-                    <div class="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-bold text-xl animate-pulse">✓</div>
-                    <h2 class="text-xl font-bold text-slate-100">Submitted!</h2>
-                    <p id="submitted-status-text" class="text-xs text-slate-400 max-w-sm">Waiting for other players to finish their turn...</p>
+                    <div class="w-12 h-12 rounded-full bg-indigo-500/20 border border-indigo-500 flex items-center justify-center text-indigo-400 font-bold text-xl animate-pulse">⌛</div>
+                    <h2 class="text-xl font-bold text-slate-100">Waiting For Turn...</h2>
+                    <p id="submitted-status-text" class="text-xs text-slate-400 max-w-sm">Another player is currently completing their step!</p>
                 </div>
 
                 <!-- Screen 1: Lobby Selection -->
@@ -164,7 +164,7 @@
                 <div id="prompt-screen" class="hidden w-full max-w-lg space-y-4">
                     <div class="text-center">
                         <h3 class="text-lg font-bold text-slate-100">Write a Prompt</h3>
-                        <p class="text-xs text-slate-400">Write a funny scenario for the next player to draw!</p>
+                        <p class="text-xs text-slate-400">Write the initial prompt to kick off the sequence!</p>
                     </div>
                     <input type="text" id="prompt-input" placeholder="e.g., A cat astronaut drinking coffee on Mars..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                     <button id="submit-prompt-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Submit Prompt</button>
@@ -202,7 +202,7 @@
                     <div class="bg-white rounded-xl overflow-hidden border border-slate-800 shadow-xl max-w-full">
                         <img id="guess-target-img" class="max-h-60 object-contain mx-auto" alt="Drawing to guess">
                     </div>
-                    <input type="text" id="guess-input" placeholder="Type your guess here (this becomes the next prompt!)..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="guess-input" placeholder="Type your guess here..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                     <button id="submit-guess-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Submit Guess</button>
                 </div>
 
@@ -210,7 +210,7 @@
                 <div id="album-screen" class="hidden w-full max-w-2xl flex-1 flex flex-col min-h-0 space-y-4">
                     <div class="text-center shrink-0">
                         <h2 class="text-xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Game Reveal Album</h2>
-                        <p class="text-xs text-slate-400">Here is how all the prompts evolved across every player!</p>
+                        <p class="text-xs text-slate-400">Here is how the single chain evolved turn-by-turn!</p>
                     </div>
                     <div id="game-album" class="flex-1 overflow-y-auto space-y-6 pr-2"></div>
                     <button id="return-lobby-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer shrink-0">Return to Lobby</button>
@@ -240,11 +240,10 @@
         let isHost = false;
         let roomPlayers = [];
 
-        // Game Turn Pipeline State
-        let currentRound = 0;
-        let totalRounds = 0;
-        let playerChains = {}; // Map of initial creator -> array of turn objects
-        let completedTurnsThisRound = 0;
+        // Single-Thread Sequence State
+        let currentStepIndex = 0;
+        let maxSteps = 0;
+        let gameChain = [];
 
         // DOM Elements
         const authModal = document.getElementById('auth-modal');
@@ -259,6 +258,7 @@
         const publicLobbiesList = document.getElementById('public-lobbies-list');
         const roomCreateError = document.getElementById('room-create-error');
         const submittedOverlay = document.getElementById('submitted-overlay');
+        const submittedStatusText = document.getElementById('submitted-status-text');
 
         // Canvas Setup
         const canvas = document.getElementById('paint-canvas');
@@ -374,15 +374,10 @@
             const roomId = document.getElementById('new-room-id').value.trim();
             const roomType = document.getElementById('new-room-type').value;
 
-            if (!roomId) {
-                return showRoomCreateError("Please enter a room name/ID.");
-            }
+            if (!roomId) return showRoomCreateError("Please enter a room name/ID.");
 
             const isTakenInPublic = activePublicLobbies.some(l => l.toLowerCase() === roomId.toLowerCase());
-            
-            if (isTakenInPublic) {
-                return showRoomCreateError("This Room ID is already taken! Choose a different name.");
-            }
+            if (isTakenInPublic) return showRoomCreateError("This Room ID is already taken! Choose a different name.");
 
             if (roomType === 'public') {
                 activePublicLobbies.push(roomId);
@@ -456,59 +451,32 @@
                     appendChatMessage(payload.payload.username, payload.payload.text);
                 })
                 .on('broadcast', { event: 'game-start' }, payload => {
-                    currentRound = 0;
-                    totalRounds = payload.payload.totalRounds;
-                    playerChains = {};
-                    completedTurnsThisRound = 0;
+                    currentStepIndex = 0;
+                    gameChain = [];
+                    maxSteps = payload.payload.maxSteps;
                     
-                    document.getElementById('stage-title').textContent = `Round 1 of ${totalRounds}: Initial Prompt`;
-                    document.getElementById('stage-subtitle').textContent = "Write a prompt for another player to draw";
-                    submittedOverlay.classList.add('hidden');
-                    document.getElementById('prompt-input').value = "";
-                    showScreen('prompt');
+                    updateSequentialTurnState();
                 })
-                .on('broadcast', { event: 'turn-submitted' }, payload => {
-                    if (!isHost) return;
+                .on('broadcast', { event: 'step-submitted' }, payload => {
+                    gameChain.push(payload.payload.stepData);
+                    currentStepIndex++;
 
-                    const { ownerIndex, roundIndex, type, author, content } = payload.payload;
-                    const chainOwner = roomPlayers[ownerIndex].username;
-
-                    if (!playerChains[chainOwner]) playerChains[chainOwner] = [];
-                    playerChains[chainOwner].push({ type, author, content });
-
-                    completedTurnsThisRound++;
-
-                    if (completedTurnsThisRound >= roomPlayers.length) {
-                        completedTurnsThisRound = 0;
-                        const nextRound = roundIndex + 1;
-
-                        if (nextRound >= totalRounds) {
-                            activeChannel.send({
-                                type: 'broadcast',
-                                event: 'game-over',
-                                payload: { playerChains }
-                            });
-                        } else {
-                            activeChannel.send({
-                                type: 'broadcast',
-                                event: 'advance-round',
-                                payload: { nextRound, playerChains }
-                            });
-                        }
+                    if (currentStepIndex >= maxSteps) {
+                        activeChannel.send({
+                            type: 'broadcast',
+                            event: 'game-over',
+                            payload: { gameChain }
+                        });
+                    } else {
+                        updateSequentialTurnState();
                     }
                 })
-                .on('broadcast', { event: 'advance-round' }, payload => {
-                    currentRound = payload.payload.nextRound;
-                    playerChains = payload.payload.playerChains;
-                    submittedOverlay.classList.add('hidden');
-                    setupRoundForUser();
-                })
                 .on('broadcast', { event: 'game-over' }, payload => {
-                    playerChains = payload.payload.playerChains;
+                    gameChain = payload.payload.gameChain;
                     submittedOverlay.classList.add('hidden');
                     renderAlbum();
                     document.getElementById('stage-title').textContent = "Game Complete!";
-                    document.getElementById('stage-subtitle').textContent = "Review the progression album below";
+                    document.getElementById('stage-subtitle').textContent = "Review the chain below";
                     showScreen('album');
                 })
                 .subscribe(async (status) => {
@@ -526,54 +494,56 @@
                 });
         }
 
-        function setupRoundForUser() {
-            const myIndex = roomPlayers.findIndex(p => p.username === currentUser.username);
-            const numPlayers = roomPlayers.length;
-            
-            // Calculate which chain this user receives this round (Rotation)
-            const chainOwnerIndex = (myIndex - currentRound + numPlayers) % numPlayers;
-            const chainOwner = roomPlayers[chainOwnerIndex].username;
-            const chain = playerChains[chainOwner] || [];
-            const previousTurn = chain[chain.length - 1];
+        function updateSequentialTurnState() {
+            const activePlayer = roomPlayers[currentStepIndex % roomPlayers.length].username;
+            const isMyTurn = activePlayer === currentUser.username;
 
-            if (currentRound % 2 === 1) {
-                // Drawing Round (from prompt)
-                document.getElementById('drawing-prompt-text').textContent = previousTurn ? previousTurn.content : "...";
-                document.getElementById('stage-title').textContent = `Round ${currentRound + 1} of ${totalRounds}: Drawing Phase`;
-                document.getElementById('stage-subtitle').textContent = `Draw the prompt given by ${previousTurn ? previousTurn.author : 'someone'}`;
+            document.getElementById('stage-title').textContent = `Step ${currentStepIndex + 1} of ${maxSteps}`;
+            
+            if (!isMyTurn) {
+                submittedStatusText.textContent = `It is currently ${activePlayer}'s turn...`;
+                submittedOverlay.classList.remove('hidden');
+                return;
+            }
+
+            submittedOverlay.classList.add('hidden');
+
+            if (currentStepIndex === 0) {
+                // Initial Prompt
+                document.getElementById('stage-subtitle').textContent = "Write the starting prompt for the game!";
+                document.getElementById('prompt-input').value = "";
+                showScreen('prompt');
+            } else if (currentStepIndex % 2 === 1) {
+                // Drawing Turn
+                const previousPrompt = gameChain[gameChain.length - 1].content;
+                document.getElementById('stage-subtitle').textContent = `Draw what ${gameChain[gameChain.length - 1].author} wrote!`;
+                document.getElementById('drawing-prompt-text').textContent = previousPrompt;
                 
-                // Clear canvas
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 showScreen('canvas');
             } else {
-                // Guess / Prompt Round (from drawing)
-                document.getElementById('guess-target-img').src = previousTurn ? previousTurn.content : "";
+                // Guess Turn
+                const previousDrawing = gameChain[gameChain.length - 1].content;
+                document.getElementById('stage-subtitle').textContent = `Guess what ${gameChain[gameChain.length - 1].author} drew!`;
+                document.getElementById('guess-target-img').src = previousDrawing;
                 document.getElementById('guess-input').value = "";
-                document.getElementById('stage-title').textContent = `Round ${currentRound + 1} of ${totalRounds}: Guessing Phase`;
-                document.getElementById('stage-subtitle').textContent = `Guess what ${previousTurn ? previousTurn.author : 'the artist'} drew!`;
                 showScreen('guess');
             }
         }
 
-        function submitUserTurn(type, content) {
-            const myIndex = roomPlayers.findIndex(p => p.username === currentUser.username);
-            const numPlayers = roomPlayers.length;
-            const chainOwnerIndex = (myIndex - currentRound + numPlayers) % numPlayers;
+        function submitStep(type, content) {
+            const stepData = {
+                type: type,
+                author: currentUser.username,
+                content: content
+            };
 
             activeChannel.send({
                 type: 'broadcast',
-                event: 'turn-submitted',
-                payload: {
-                    ownerIndex: chainOwnerIndex,
-                    roundIndex: currentRound,
-                    type: type,
-                    author: currentUser.username,
-                    content: content
-                }
+                event: 'step-submitted',
+                payload: { stepData }
             });
-
-            submittedOverlay.classList.remove('hidden');
         }
 
         function renderPlayers(players) {
@@ -677,29 +647,29 @@
         document.getElementById('start-game-btn').addEventListener('click', () => {
             if (roomPlayers.length < 1) return alert("You need players in the room to start!");
             
-            // Number of rounds equals number of players or minimum 3 for small groups
-            const calculatedRounds = roomPlayers.length === 1 ? 3 : roomPlayers.length;
+            // In a single chain, every player takes at least 2 turns (or min 4 turns total)
+            const totalSteps = Math.max(roomPlayers.length * 2, 4);
             
             activeChannel.send({
                 type: 'broadcast',
                 event: 'game-start',
-                payload: { totalRounds: calculatedRounds }
+                payload: { maxSteps: totalSteps }
             });
         });
 
         document.getElementById('submit-prompt-btn').addEventListener('click', () => {
             const promptVal = document.getElementById('prompt-input').value.trim() || "A dragon eating pizza";
-            submitUserTurn('prompt', promptVal);
+            submitStep('prompt', promptVal);
         });
 
         document.getElementById('submit-canvas-btn').addEventListener('click', () => {
             const drawingData = canvas.toDataURL();
-            submitUserTurn('drawing', drawingData);
+            submitStep('drawing', drawingData);
         });
 
         document.getElementById('submit-guess-btn').addEventListener('click', () => {
             const guessVal = document.getElementById('guess-input').value.trim() || "A mystery drawing";
-            submitUserTurn('prompt', guessVal);
+            submitStep('prompt', guessVal);
         });
 
         document.getElementById('return-lobby-btn').addEventListener('click', () => {
@@ -711,36 +681,33 @@
             const album = document.getElementById('game-album');
             album.innerHTML = '';
 
-            Object.keys(playerChains).forEach((owner, idx) => {
-                const chain = playerChains[owner];
-                const section = document.createElement('div');
-                section.className = "bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-4";
-                
-                let chainHTML = `<h3 class="text-sm font-bold text-indigo-400 border-b border-slate-800 pb-2">Chain ${idx + 1} (Started by ${escapeHTML(owner)})</h3>`;
-                
-                chain.forEach(step => {
-                    if (step.type === 'prompt') {
-                        chainHTML += `
-                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                                <span class="text-[10px] uppercase font-bold text-slate-500">${escapeHTML(step.author)} wrote:</span>
-                                <p class="text-sm font-bold text-slate-200">"${escapeHTML(step.content)}"</p>
+            const section = document.createElement('div');
+            section.className = "bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-4";
+            
+            let chainHTML = `<h3 class="text-sm font-bold text-indigo-400 border-b border-slate-800 pb-2">Full Game Chain</h3>`;
+            
+            gameChain.forEach((step, idx) => {
+                if (step.type === 'prompt') {
+                    chainHTML += `
+                        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                            <span class="text-[10px] uppercase font-bold text-slate-500">Step ${idx + 1} - ${escapeHTML(step.author)} wrote:</span>
+                            <p class="text-sm font-bold text-slate-200">"${escapeHTML(step.content)}"</p>
+                        </div>
+                    `;
+                } else if (step.type === 'drawing') {
+                    chainHTML += `
+                        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+                            <span class="text-[10px] uppercase font-bold text-slate-500 block text-left mb-1">Step ${idx + 1} - ${escapeHTML(step.author)} drew:</span>
+                            <div class="bg-white rounded-lg p-2 max-w-sm mx-auto inline-block border border-slate-800">
+                                <img src="${step.content}" class="w-full h-auto rounded">
                             </div>
-                        `;
-                    } else if (step.type === 'drawing') {
-                        chainHTML += `
-                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
-                                <span class="text-[10px] uppercase font-bold text-slate-500 block text-left mb-1">${escapeHTML(step.author)} drew:</span>
-                                <div class="bg-white rounded-lg p-2 max-w-sm mx-auto inline-block border border-slate-800">
-                                    <img src="${step.content}" class="w-full h-auto rounded">
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-
-                section.innerHTML = chainHTML;
-                album.appendChild(section);
+                        </div>
+                    `;
+                }
             });
+
+            section.innerHTML = chainHTML;
+            album.appendChild(section);
         }
 
         function escapeHTML(str) { 
