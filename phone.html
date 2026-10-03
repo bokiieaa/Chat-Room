@@ -455,6 +455,7 @@
                     gameChain = [];
                     maxSteps = payload.payload.maxSteps;
                     
+                    document.getElementById('waiting-room-screen').classList.add('hidden');
                     updateSequentialTurnState();
                 })
                 .on('broadcast', { event: 'step-submitted' }, payload => {
@@ -509,12 +510,10 @@
             submittedOverlay.classList.add('hidden');
 
             if (currentStepIndex === 0) {
-                // Initial Prompt
                 document.getElementById('stage-subtitle').textContent = "Write the starting prompt for the game!";
                 document.getElementById('prompt-input').value = "";
                 showScreen('prompt');
             } else if (currentStepIndex % 2 === 1) {
-                // Drawing Turn
                 const previousPrompt = gameChain[gameChain.length - 1].content;
                 document.getElementById('stage-subtitle').textContent = `Draw what ${gameChain[gameChain.length - 1].author} wrote!`;
                 document.getElementById('drawing-prompt-text').textContent = previousPrompt;
@@ -523,7 +522,6 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 showScreen('canvas');
             } else {
-                // Guess Turn
                 const previousDrawing = gameChain[gameChain.length - 1].content;
                 document.getElementById('stage-subtitle').textContent = `Guess what ${gameChain[gameChain.length - 1].author} drew!`;
                 document.getElementById('guess-target-img').src = previousDrawing;
@@ -647,7 +645,6 @@
         document.getElementById('start-game-btn').addEventListener('click', () => {
             if (roomPlayers.length < 1) return alert("You need players in the room to start!");
             
-            // In a single chain, every player takes at least 2 turns (or min 4 turns total)
             const totalSteps = Math.max(roomPlayers.length * 2, 4);
             
             activeChannel.send({
