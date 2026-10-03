@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gartic Phone - Mesh</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        #chat-box::-webkit-scrollbar, #players-container::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track, #players-container::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        #chat-box::-webkit-scrollbar-thumb, #players-container::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
+        
+        .canvas-container {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased select-none">
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
+            <div class="text-center">
+                <img src="icon.png" alt="Mesh Logo" class="w-12 h-12 mx-auto mb-2 object-contain" onerror="this.style.display='none'">
+                <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Mesh Gartic Phone</h2>
+                <p class="text-xs text-slate-400 mt-1">Sign in with your Mesh account to play</p>
+            </div>
+            
+            <form id="auth-form" onsubmit="return false;" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Username</label>
+                    <input type="text" id="auth-username" required placeholder="Choose or enter username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" id="login-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">LOG IN</button>
+                    <button type="button" id="signup-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SIGN UP</button>
+                </div>
+            </form>
+
+            <div id="auth-error" class="text-xs text-rose-400 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="h-14 border-b border-slate-800 bg-slate-900/60 px-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <img src="icon.png" alt="Logo" class="w-7 h-7 object-contain" onerror="this.style.display='none'">
+            <span class="font-black text-base bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Gartic Phone</span>
+            <span id="room-badge" class="hidden text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono">Room: <span id="room-code-display">---</span></span>
+        </div>
+
+        <!-- Current User Profile Widget -->
+        <div class="flex items-center gap-3">
+            <div id="user-avatar" class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold overflow-hidden border border-slate-700 shrink-0">?</div>
+            <span id="current-user-display" class="text-xs font-semibold text-slate-300">Guest</span>
+            <button id="logout-btn" class="text-xs text-slate-500 hover:text-slate-300 ml-2 transition-colors cursor-pointer">Logout</button>
+        </div>
+    </header>
+
+    <!-- Main Game & Chat Workspace -->
+    <div class="flex-1 flex overflow-hidden min-w-0">
+        
+        <!-- Left Side Game Workspace -->
+        <main class="flex-1 flex flex-col bg-slate-950 p-4 overflow-y-auto custom-scrollbar relative min-w-0 justify-center items-center">
+            
+            <!-- STAGE 0: Lobby View -->
+            <div id="lobby-stage" class="w-full max-w-xl bg-slate-900/80 border border-slate-800 rounded-2xl p-6 text-center space-y-6 shadow-2xl">
+                <div>
+                    <h1 class="text-2xl font-black text-indigo-300">Telephone Drawing Game</h1>
+                    <p class="text-xs text-slate-400 mt-1">Write prompts, draw crazy pictures, and watch how sentences mutate!</p>
+                </div>
+
+                <div class="space-y-3 pt-2">
+                    <button id="create-room-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/20 cursor-pointer">
+                        Create Game Room
+                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <div class="h-px bg-slate-800 flex-1"></div>
+                        <span class="text-[10px] text-slate-500 uppercase font-bold">Or Join Game</span>
+                        <div class="h-px bg-slate-800 flex-1"></div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="join-room-input" placeholder="Enter Room Code..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 uppercase tracking-widest font-mono focus:outline-none focus:border-indigo-500">
+                        <button id="join-room-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs px-5 rounded-xl transition-colors cursor-pointer">Join</button>
+                    </div>
+                </div>
+
+                <!-- Lobby Waiting Area -->
+                <div id="lobby-waiting-area" class="hidden space-y-4 pt-4 border-t border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Players in Lobby (<span id="player-count">0</span>/6)</span>
+                        <span id="host-badge" class="hidden text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-md font-bold">YOU ARE HOST</span>
+                    </div>
+
+                    <div id="lobby-players-grid" class="grid grid-cols-3 gap-3"></div>
+
+                    <button id="start-game-btn" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/20 cursor-pointer">
+                        Start Game
+                    </button>
+                </div>
+            </div>
+
+            <!-- STAGE 1: Prompt Writing Stage -->
+            <div id="prompt-stage" class="hidden w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 text-center shadow-2xl">
+                <div class="space-y-1">
+                    <span id="prompt-timer" class="text-xs font-bold font-mono bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">Time Left: --s</span>
+                    <h2 class="text-xl font-bold text-slate-100 pt-2">Write a Weird Prompt!</h2>
+                    <p class="text-xs text-slate-400">Give the next person something interesting to draw.</p>
+                </div>
+
+                <input type="text" id="game-prompt-input" maxlength="80" placeholder="e.g. A cat astronaut riding a bicycle on Mars" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+
+                <button id="submit-prompt-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl transition-colors cursor-pointer uppercase tracking-wider">
+                    Submit Sentence
+                </button>
+            </div>
+
+            <!-- STAGE 2: Drawing Stage -->
+            <div id="draw-stage" class="hidden w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 flex flex-col items-center shadow-2xl">
+                <div class="w-full flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Draw this phrase:</span>
+                    <span id="draw-timer" class="text-xs font-bold font-mono bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">Time Left: --s</span>
+                </div>
+
+                <div id="prompt-to-draw-display" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-center text-sm font-semibold text-indigo-300 break-words">
+                    "Loading prompt..."
+                </div>
+
+                <!-- Drawing Canvas Container -->
+                <div class="canvas-container relative bg-white rounded-xl overflow-hidden border border-slate-700 shadow-inner">
+                    <canvas id="drawing-canvas" width="500" height="350" class="cursor-crosshair block bg-white"></canvas>
+                </div>
+
+                <!-- Canvas Tools Bar -->
+                <div class="w-full flex flex-wrap items-center justify-between gap-2 pt-1 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-1.5" id="color-palette">
+                        <button class="w-6 h-6 rounded-full bg-black border border-slate-600 ring-2 ring-indigo-500" data-color="#000000"></button>
+                        <button class="w-6 h-6 rounded-full bg-red-500 border border-slate-600" data-color="#ef4444"></button>
+                        <button class="w-6 h-6 rounded-full bg-blue-500 border border-slate-600" data-color="#3b82f6"></button>
+                        <button class="w-6 h-6 rounded-full bg-emerald-500 border border-slate-600" data-color="#10b981"></button>
+                        <button class="w-6 h-6 rounded-full bg-amber-400 border border-slate-600" data-color="#f59e0b"></button>
+                        <button class="w-6 h-6 rounded-full bg-purple-500 border border-slate-600" data-color="#a855f7"></button>
+                        <button class="w-6 h-6 rounded-full bg-white border border-slate-600" data-color="#ffffff"></button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-400 uppercase font-bold">Size</span>
+                        <input type="range" id="brush-size" min="2" max="30" value="5" class="w-20 accent-indigo-500">
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="clear-canvas-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer">Clear</button>
+                        <button id="submit-draw-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors cursor-pointer">Done</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STAGE 3: Guessing Stage -->
+            <div id="guess-stage" class="hidden w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 text-center shadow-2xl">
+                <div class="w-full flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">What is this drawing?</span>
+                    <span id="guess-timer" class="text-xs font-bold font-mono bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">Time Left: --s</span>
+                </div>
+
+                <div class="bg-white rounded-xl overflow-hidden border border-slate-700 p-1 flex justify-center">
+                    <img id="drawing-to-guess-img" src="" class="max-h-72 object-contain rounded-lg">
+                </div>
+
+                <input type="text" id="game-guess-input" maxlength="80" placeholder="Type what you see..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+
+                <button id="submit-guess-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl transition-colors cursor-pointer uppercase tracking-wider">
+                    Submit Guess
+                </button>
+            </div>
+
+            <!-- STAGE 4: Waiting Turn Stage -->
+            <div id="waiting-stage" class="hidden text-center space-y-3 p-8">
+                <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <h3 class="text-lg font-bold text-slate-200">Turn Submitted!</h3>
+                <p class="text-xs text-slate-400">Waiting for other players to finish their turn...</p>
+            </div>
+
+            <!-- STAGE 5: Reveal Album Stage -->
+            <div id="reveal-stage" class="hidden w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl">
+                <div class="text-center space-y-1">
+                    <h2 class="text-2xl font-black text-indigo-300">The Results Reveal! 📖</h2>
+                    <p class="text-xs text-slate-400">See how your original prompt transformed round by round.</p>
+                </div>
+
+                <div id="album-container" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar"></div>
+
+                <button id="back-to-lobby-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl transition-colors cursor-pointer uppercase tracking-wider">
+                    Back to Lobby
+                </button>
+            </div>
+
+        </main>
+
+        <!-- Right Side Group Chat Panel -->
+        <aside class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 hidden md:flex">
+            <!-- Sidebar Header / Player Status -->
+            <div class="p-3 border-b border-slate-800 bg-slate-900/80">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Players (<span id="chat-player-count">0</span>)</h3>
+                <div id="chat-players-list" class="space-y-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar"></div>
+            </div>
+
+            <!-- Chat Message Feed -->
+            <div id="chat-box" class="flex-1 p-3 overflow-y-auto space-y-3 min-w-0"></div>
+
+            <!-- Chat Footer Input -->
+            <footer class="p-3 border-t border-slate-800 bg-slate-900/80 shrink-0">
+                <form id="chat-form" class="flex items-center gap-2">
+                    <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer">Send</button>
+                </form>
+            </footer>
+        </aside>
+
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://aibfznbgzgjdsufgaxuo.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_e_CqJETIOnvnJY5U4twlow_J9n1muxx";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Global State
+        let currentUser = null;
+        let roomCode = null;
+        let isHost = false;
+        let roomState = null;
+        let userAvatarCache = new Map();
+        let knownMessageIds = new Set();
+        let roomSubscription = null;
+        let chatSubscription = null;
+        let turnTimerInterval = null;
+
+        // Drawing State
+        let currentBrushColor = '#000000';
+        let isDrawing = false;
+        let canvas, ctx;
+
+        // DOM Elements
+        const authModal = document.getElementById('auth-modal');
+        const authError = document.getElementById('auth-error');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const chatBox = document.getElementById('chat-box');
+
+        // Stages
+        const lobbyStage = document.getElementById('lobby-stage');
+        const promptStage = document.getElementById('prompt-stage');
+        const drawStage = document.getElementById('draw-stage');
+        const guessStage = document.getElementById('guess-stage');
+        const waitingStage = document.getElementById('waiting-stage');
+        const revealStage = document.getElementById('reveal-stage');
+
+        // --- AUTHENTICATION SYSTEM ---
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        signupBtn.addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (!username || !password) return showAuthError("Username and password required.");
+            if (password.length < 6) return showAuthError("Password must be at least 6 characters.");
+
+            const { data: existingUser } = await supabaseClient
+                .from('profiles')
+                .select('username')
+                .eq('username', username)
+                .maybeSingle();
+
+            if (existingUser) return showAuthError("Username is already taken.");
+
+            const passwordHash = await hashPassword(password);
+            const userId = crypto.randomUUID();
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .insert([{ id: userId, username, password_hash: passwordHash }]);
+
+            if (error) return showAuthError("Account creation failed: " + error.message);
+
+            initAuthenticatedSession({ id: userId, avatar_url: null }, username);
+        });
+
+        loginBtn.addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (!username || !password) return showAuthError("Username and password required.");
+
+            const passwordHash = await hashPassword(password);
+
+            const { data: userProfile, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('username', username)
+                .maybeSingle();
+
+            if (error || !userProfile) return showAuthError("Account not found.");
+            if (userProfile.password_hash !== passwordHash) return showAuthError("Incorrect password.");
+
+            initAuthenticatedSession({ id: userProfile.id, avatar_url: userProfile.avatar_url }, userProfile.username);
+        });
+
+        function showAuthError(msg) {
+            authError.textContent = msg;
+            authError.classList.remove('hidden');
+        }
+
+        function initAuthenticatedSession(user, username) {
+            currentUser = { id: user.id, username, avatar_url: user.avatar_url };
+            document.getElementById('current-user-display').textContent = username;
+            
+            if (user.avatar_url) userAvatarCache.set(username, user.avatar_url);
+            renderUserAvatar(username, user.avatar_url, document.getElementById('user-avatar'));
+
+            authModal.classList.add('hidden');
+            initCanvas();
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        function renderUserAvatar(username, avatarUrl, element) {
+            if (avatarUrl) {
+                element.innerHTML = `<img src="${escapeHTML(avatarUrl)}" class="w-full h-full object-cover rounded-full">`;
+            } else {
+                element.textContent = username.charAt(0).toUpperCase();
+            }
+        }
+
+        async function fetchUserAvatar(username) {
+            if (userAvatarCache.has(username)) return userAvatarCache.get(username);
+
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('avatar_url')
+                .eq('username', username)
+                .maybeSingle();
+
+            const url = data ? data.avatar_url : null;
+            userAvatarCache.set(username, url);
+            return url;
+        }
+
+        // --- DRAWING CANVAS ENGINE ---
+        function initCanvas() {
+            canvas = document.getElementById('drawing-canvas');
+            ctx = canvas.getContext('2d');
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            clearCanvas();
+
+            // Event Listeners
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            // Touch support for mobiles/tablets
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY });
+                canvas.dispatchEvent(mouseEvent);
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+I have updated the application to integrate directly with your existing Supabase profile structure and authentication system.
+
+Here is the updated single-file Gartic Phone web application (`index.html`):
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gartic Phone Mesh</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <script src="[https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2](https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2)"></script>
+    <style>
+        #chat-box::-webkit-scrollbar, #game-album::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track, #game-album::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        #chat-box::-webkit-scrollbar-thumb, #game-album::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
+        canvas { touch-action: none; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col font-sans overflow-hidden antialiased">
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
+            <div class="text-center">
+                <img src="icon.png" alt="Mesh Logo" class="w-12 h-12 mx-auto mb-2 object-contain" onerror="this.style.display='none'">
+                <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Gartic Phone Mesh</h2>
+                <p class="text-xs text-slate-400 mt-1">Sign in with your Mesh account to play</p>
+            </div>
+            
+            <form id="auth-form" onsubmit="return false;" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Username</label>
+                    <input type="text" id="auth-username" required placeholder="Enter username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" id="login-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">LOG IN</button>
+                    <button type="button" id="signup-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SIGN UP</button>
+                </div>
+            </form>
+
+            <div id="auth-error" class="text-xs text-rose-400 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="flex-1 flex overflow-hidden min-w-0">
+        
+        <!-- Sidebar Navigation / Players & Chat -->
+        <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
+            <div class="p-4 space-y-4 flex-1 flex flex-col min-h-0">
+                <div class="flex items-center gap-2">
+                    <img src="icon.png" alt="App Icon" class="w-6 h-6 object-contain" onerror="this.style.display='none'">
+                    <span class="font-bold text-sm text-slate-200">Gartic Phone Mesh</span>
+                </div>
+
+                <!-- Lobby & Players List -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Players (<span id="player-count">0</span>/6)</h2>
+                        <span id="game-status-badge" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-bold">Lobby</span>
+                    </div>
+                    <div id="players-list" class="space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Group Chat -->
+                <div class="flex-1 flex flex-col min-h-0 border-t border-slate-800 pt-3">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Group Chat</h2>
+                    <div id="chat-box" class="flex-1 bg-slate-950 rounded-xl p-3 overflow-y-auto space-y-2 border border-slate-800"></div>
+                    <form id="chat-form" class="mt-2 flex gap-2">
+                        <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer">Send</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Profile Footer -->
+            <div class="p-4 border-t border-slate-800 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div id="user-avatar" class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold overflow-hidden border border-slate-700 shrink-0">?</div>
+                    <span id="current-user-display" class="text-xs font-semibold text-slate-300 truncate">Guest</span>
+                </div>
+                <button id="logout-btn" class="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer shrink-0 ml-2">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 flex flex-col bg-slate-950 min-w-0 overflow-hidden relative">
+            <header class="p-3 sm:p-4 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between shrink-0">
+                <div>
+                    <h1 id="stage-title" class="text-base font-bold text-slate-200">Waiting for Host...</h1>
+                    <p id="stage-subtitle" class="text-xs text-slate-400">Join room to play with friends</p>
+                </div>
+                <div id="timer-display" class="hidden font-mono text-xl font-black bg-indigo-950 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-xl">
+                    00:30
+                </div>
+            </header>
+
+            <!-- Game Viewport -->
+            <div id="game-container" class="flex-1 p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                
+                <!-- Screen 1: Lobby View -->
+                <div id="lobby-screen" class="text-center space-y-4 max-w-md">
+                    <div class="w-16 h-16 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center mx-auto text-3xl font-black">🎨</div>
+                    <h2 class="text-xl font-bold text-slate-200">Gartic Phone Room</h2>
+                    <p class="text-xs text-slate-400 leading-relaxed">Gather up to 6 players! Draw prompt chains, pass them around, and reveal the hilarious sequence results at the end.</p>
+                    <button id="start-game-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-6 py-3 rounded-xl transition-colors cursor-pointer shadow-lg shadow-indigo-600/20">Start Game</button>
+                </div>
+
+                <!-- Screen 2: Prompt Input -->
+                <div id="prompt-screen" class="hidden w-full max-w-lg space-y-4">
+                    <div class="text-center">
+                        <h3 class="text-lg font-bold text-slate-100">Write a Prompt</h3>
+                        <p class="text-xs text-slate-400">Write a funny scenario for someone else to draw!</p>
+                    </div>
+                    <input type="text" id="prompt-input" placeholder="e.g., A astronaut cat drinking coffee on Mars..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <button id="submit-prompt-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Submit Prompt</button>
+                </div>
+
+                <!-- Screen 3: Drawing Canvas -->
+                <div id="canvas-screen" class="hidden flex flex-col items-center gap-3 w-full max-w-xl">
+                    <div id="canvas-prompt-banner" class="bg-indigo-950/60 border border-indigo-500/30 text-indigo-200 px-4 py-2 rounded-xl text-xs font-semibold text-center w-full truncate">
+                        Draw: <span id="drawing-prompt-text" class="font-bold text-white">...</span>
+                    </div>
+                    <div class="relative bg-white rounded-xl shadow-2xl border border-slate-800 overflow-hidden">
+                        <canvas id="paint-canvas" width="500" height="350" class="cursor-crosshair"></canvas>
+                    </div>
+                    <!-- Controls Toolbar -->
+                    <div class="flex items-center gap-3 bg-slate-900 border border-slate-800 p-2 rounded-xl w-full justify-between flex-wrap">
+                        <div class="flex items-center gap-1.5">
+                            <input type="color" id="color-picker" value="#000000" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0">
+                            <button data-color="#000000" class="color-btn w-6 h-6 rounded-full bg-black border border-slate-700"></button>
+                            <button data-color="#ef4444" class="color-btn w-6 h-6 rounded-full bg-red-500 border border-slate-700"></button>
+                            <button data-color="#3b82f6" class="color-btn w-6 h-6 rounded-full bg-blue-500 border border-slate-700"></button>
+                            <button data-color="#22c55e" class="color-btn w-6 h-6 rounded-full bg-green-500 border border-slate-700"></button>
+                            <button data-color="#eab308" class="color-btn w-6 h-6 rounded-full bg-yellow-500 border border-slate-700"></button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400">Size:</span>
+                            <input type="range" id="brush-size" min="2" max="24" value="4" class="w-20">
+                            <button id="clear-canvas-btn" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1.5 rounded-lg text-slate-300 font-bold transition-colors">Clear</button>
+                        </div>
+                        <button id="submit-canvas-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors cursor-pointer">Submit Drawing</button>
+                    </div>
+                </div>
+
+                <!-- Screen 4: Guess Screen -->
+                <div id="guess-screen" class="hidden w-full max-w-lg space-y-3 flex flex-col items-center">
+                    <h3 class="text-sm font-bold text-slate-200">What is this drawing?</h3>
+                    <div class="bg-white rounded-xl overflow-hidden border border-slate-800 shadow-xl max-w-full">
+                        <img id="guess-target-img" class="max-h-60 object-contain mx-auto" alt="Drawing to guess">
+                    </div>
+                    <input type="text" id="guess-input" placeholder="Type your guess here..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    <button id="submit-guess-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer">Submit Guess</button>
+                </div>
+
+                <!-- Screen 5: Album Reveal -->
+                <div id="album-screen" class="hidden w-full max-w-2xl flex-1 flex flex-col min-h-0 space-y-4">
+                    <div class="text-center shrink-0">
+                        <h2 class="text-xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Game Reveal Album</h2>
+                        <p class="text-xs text-slate-400">Look at how the drawings evolved!</p>
+                    </div>
+                    <div id="game-album" class="flex-1 overflow-y-auto space-y-6 pr-2"></div>
+                    <button id="return-lobby-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer shrink-0">Return to Lobby</button>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = "[https://aibfznbgzgjdsufgaxuo.supabase.co](https://aibfznbgzgjdsufgaxuo.supabase.co)";
+        const SUPABASE_ANON_KEY = "sb_publishable_e_CqJETIOnvnJY5U4twlow_J9n1muxx";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let userAvatarCache = new Map();
+        let currentPrompt = "";
+        let currentDrawing = "";
+        let currentGuess = "";
+
+        // Elements
+        const authModal = document.getElementById('auth-modal');
+        const authError = document.getElementById('auth-error');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const playersList = document.getElementById('players-list');
+        const playerCount = document.getElementById('player-count');
+
+        // Canvas Setup
+        const canvas = document.getElementById('paint-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let brushColor = "#000000";
+        let brushSize = 4;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // --- AUTHENTICATION ---
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        signupBtn.addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (!username || !password) return showAuthError("Username and password required.");
+            if (password.length < 6) return showAuthError("Password must be at least 6 characters.");
+
+            const { data: existingUser } = await supabaseClient
+                .from('profiles')
+                .select('username')
+                .eq('username', username)
+                .maybeSingle();
+
+            if (existingUser) return showAuthError("Username is already taken.");
+
+            const passwordHash = await hashPassword(password);
+            const userId = crypto.randomUUID();
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .insert([{ id: userId, username, password_hash: passwordHash }]);
+
+            if (error) return showAuthError("Account creation failed: " + error.message);
+
+            initAuthenticatedSession({ id: userId, avatar_url: null }, username);
+        });
+
+        loginBtn.addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (!username || !password) return showAuthError("Username and password required.");
+
+            const passwordHash = await hashPassword(password);
+
+            const { data: userProfile, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('username', username)
+                .maybeSingle();
+
+            if (error || !userProfile) return showAuthError("Account not found.");
+            if (userProfile.password_hash !== passwordHash) return showAuthError("Incorrect password.");
+
+            initAuthenticatedSession({ id: userProfile.id, avatar_url: userProfile.avatar_url }, userProfile.username);
+        });
+
+        function showAuthError(msg) {
+            authError.textContent = msg;
+            authError.classList.remove('hidden');
+        }
+
+        function initAuthenticatedSession(user, username) {
+            currentUser = { id: user.id, username, avatar_url: user.avatar_url };
+            document.getElementById('current-user-display').textContent = username;
+            
+            if (user.avatar_url) {
+                userAvatarCache.set(username, user.avatar_url);
+            }
+            renderUserAvatar(username, user.avatar_url, document.getElementById('user-avatar'));
+
+            authModal.classList.add('hidden');
+            joinLobby();
+            listenToChat();
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        function renderUserAvatar(username, avatarUrl, element) {
+            if (avatarUrl) {
+                element.innerHTML = `<img src="${escapeHTML(avatarUrl)}" class="w-full h-full object-cover rounded-full">`;
+            } else {
+                element.textContent = username.charAt(0).toUpperCase();
+            }
+        }
+
+        // --- LOBBY & PLAYERS ---
+        function joinLobby() {
+            renderPlayers([
+                { username: currentUser.username, avatar_url: currentUser.avatar_url },
+                { username: "Alex_Dev", avatar_url: null },
+                { username: "PixelCat", avatar_url: null },
+                { username: "Sam_Gamer", avatar_url: null },
+                { username: "DoodlePro", avatar_url: null },
+                { username: "Maya99", avatar_url: null }
+            ]);
+        }
+
+        function renderPlayers(players) {
+            playersList.innerHTML = '';
+            playerCount.textContent = players.length;
+            players.forEach(p => {
+                const el = document.createElement('div');
+                el.className = "flex items-center gap-2 p-1.5 bg-slate-950 rounded-lg border border-slate-800 text-xs";
+                const avatar = p.avatar_url 
+                    ? `<img src="${escapeHTML(p.avatar_url)}" class="w-6 h-6 rounded-full object-cover shrink-0">`
+                    : `<div class="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-[10px] shrink-0">${p.username.charAt(0).toUpperCase()}</div>`;
+                
+                el.innerHTML = `
+                    ${avatar}
+                    <span class="font-semibold text-slate-300 truncate">${escapeHTML(p.username)}</span>
+                `;
+                playersList.appendChild(el);
+            });
+        }
+
+        // --- CHAT SYSTEM ---
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text || !currentUser) return;
+
+            appendChatMessage(currentUser.username, text);
+            chatInput.value = '';
+        });
+
+        function appendChatMessage(username, text) {
+            const item = document.createElement('div');
+            item.className = "text-xs space-y-0.5";
+            item.innerHTML = `<b class="text-indigo-400">${escapeHTML(username)}:</b> <span class="text-slate-300">${escapeHTML(text)}</span>`;
+            chatBox.appendChild(item);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function listenToChat() {
+            appendChatMessage("System", "Welcome to Gartic Phone Mesh!");
+        }
+
+        // --- CANVAS CONTROLS ---
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const coords = getCanvasCoords(e);
+            ctx.beginPath();
+            ctx.moveTo(coords.x, coords.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const coords = getCanvasCoords(e);
+            ctx.strokeStyle = brushColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        document.getElementById('color-picker').addEventListener('input', (e) => brushColor = e.target.value);
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', () => brushColor = btn.dataset.color);
+        });
+        document.getElementById('brush-size').addEventListener('input', (e) => brushSize = e.target.value);
+        document.getElementById('clear-canvas-btn').addEventListener('click', () => {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // --- GAME FLOW STAGES ---
+        const screens = {
+            lobby: document.getElementById('lobby-screen'),
+            prompt: document.getElementById('prompt-screen'),
+            canvas: document.getElementById('canvas-screen'),
+            guess: document.getElementById('guess-screen'),
+            album: document.getElementById('album-screen')
+        };
+
+        function showScreen(screenKey) {
+            Object.keys(screens).forEach(k => screens[k].classList.add('hidden'));
+            screens[screenKey].classList.remove('hidden');
+        }
+
+        document.getElementById('start-game-btn').addEventListener('click', () => {
+            document.getElementById('stage-title').textContent = "Round 1: Prompt Phase";
+            document.getElementById('stage-subtitle').textContent = "Write your creative prompt";
+            showScreen('prompt');
+        });
+
+        document.getElementById('submit-prompt-btn').addEventListener('click', () => {
+            currentPrompt = document.getElementById('prompt-input').value.trim() || "A dragon eating pizza";
+            document.getElementById('stage-title').textContent = "Round 2: Drawing Phase";
+            document.getElementById('stage-subtitle').textContent = "Draw the prompt provided";
+            document.getElementById('drawing-prompt-text').textContent = currentPrompt;
+            showScreen('canvas');
+        });
+
+        document.getElementById('submit-canvas-btn').addEventListener('click', () => {
+            currentDrawing = canvas.toDataURL();
+            document.getElementById('stage-title').textContent = "Round 3: Guessing Phase";
+            document.getElementById('stage-subtitle').textContent = "Guess what was drawn!";
+            document.getElementById('guess-target-img').src = currentDrawing;
+            showScreen('guess');
+        });
+
+        document.getElementById('submit-guess-btn').addEventListener('click', () => {
+            currentGuess = document.getElementById('guess-input').value.trim() || "A cute cat";
+            document.getElementById('stage-title').textContent = "Game Complete";
+            document.getElementById('stage-subtitle').textContent = "View the album reveal";
+            renderAlbum();
+            showScreen('album');
+        });
+
+        document.getElementById('return-lobby-btn').addEventListener('click', () => {
+            document.getElementById('stage-title').textContent = "Waiting for Host...";
+            document.getElementById('stage-subtitle').textContent = "Join room to play with friends";
+            showScreen('lobby');
+        });
+
+        function renderAlbum() {
+            const album = document.getElementById('game-album');
+            album.innerHTML = `
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-4">
+                    <div class="border-b border-slate-800 pb-2">
+                        <span class="text-[10px] uppercase font-bold text-slate-500">Original Prompt</span>
+                        <p class="text-sm font-bold text-indigo-300">"${escapeHTML(currentPrompt)}"</p>
+                    </div>
+                    <div class="border-b border-slate-800 pb-2">
+                        <span class="text-[10px] uppercase font-bold text-slate-500">Drawing</span>
+                        <div class="bg-white rounded-lg p-2 max-w-sm mx-auto mt-1 border border-slate-800">
+                            <img src="${currentDrawing}" class="w-full h-auto rounded">
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-500">Final Guess</span>
+                        <p class="text-sm font-bold text-emerald-400">"${escapeHTML(currentGuess)}"</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function escapeHTML(str) { 
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); 
+        }
+    </script>
+</body>
+</html>
