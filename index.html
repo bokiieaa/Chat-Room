@@ -748,7 +748,7 @@
                 .select('*')
                 .eq('channel_id', activeChannel)
                 .order('created_at', { ascending: true })
-                .limit(1000000);
+                .limit(1000000000);
 
             if (data) {
                 for (const msg of data) {
