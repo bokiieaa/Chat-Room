@@ -417,11 +417,12 @@
             if (avatarUrl) {
                 element.innerHTML = `<img src="${escapeHTML(avatarUrl)}" class="w-full h-full object-cover rounded-full">`;
             } else {
-                element.textContent = username.charAt(0).toUpperCase();
+                element.textContent = (username || '?').charAt(0).toUpperCase();
             }
         }
 
         async function fetchUserAvatar(username) {
+            if (!username) return null;
             if (userAvatarCache.has(username)) return userAvatarCache.get(username);
 
             const { data } = await supabaseClient
@@ -833,7 +834,7 @@
 
             const avatarHTML = userAvatarUrl 
                 ? `<img src="${escapeHTML(userAvatarUrl)}" class="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5 border border-slate-700">`
-                : `<div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 border border-slate-700">${escapeHTML(msg.username.charAt(0).toUpperCase())}</div>`;
+                : `<div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 border border-slate-700">${escapeHTML((msg.username || '?').charAt(0).toUpperCase())}</div>`;
 
             msgEl.innerHTML = `
                 ${avatarHTML}
