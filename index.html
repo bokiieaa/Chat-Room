@@ -417,12 +417,11 @@
             if (avatarUrl) {
                 element.innerHTML = `<img src="${escapeHTML(avatarUrl)}" class="w-full h-full object-cover rounded-full">`;
             } else {
-                element.textContent = (username || '?').charAt(0).toUpperCase();
+                element.textContent = username.charAt(0).toUpperCase();
             }
         }
 
         async function fetchUserAvatar(username) {
-            if (!username) return null;
             if (userAvatarCache.has(username)) return userAvatarCache.get(username);
 
             const { data } = await supabaseClient
@@ -660,7 +659,6 @@
             }
             const channelId = getDMChannelID(currentUser.username, targetUsername);
             
-            // Highlight active DM button if available
             document.querySelectorAll('.channel-btn').forEach(b => {
                 b.className = "channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2";
             });
@@ -766,7 +764,7 @@
                 .select('*')
                 .eq('channel_id', activeChannel)
                 .order('created_at', { ascending: true })
-                .limit(1000000000);
+                .limit(1000);
 
             if (data) {
                 for (const msg of data) {
@@ -793,7 +791,6 @@
 
             const userAvatarUrl = await fetchUserAvatar(msg.username);
 
-            // Detailed quoted reply Header
             let replyHeader = '';
             if (msg.reply_to_user || msg.reply_to_text) {
                 replyHeader = `
@@ -819,7 +816,6 @@
                 }
             }
 
-            // Parse YouTube links
             let ytEmbedsHtml = '';
             if (msg.message) {
                 const ytLinks = extractYouTubeLinks(msg.message);
@@ -834,7 +830,7 @@
 
             const avatarHTML = userAvatarUrl 
                 ? `<img src="${escapeHTML(userAvatarUrl)}" class="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5 border border-slate-700">`
-                : `<div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 border border-slate-700">${escapeHTML((msg.username || '?').charAt(0).toUpperCase())}</div>`;
+                : `<div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 border border-slate-700">${escapeHTML(msg.username.charAt(0).toUpperCase())}</div>`;
 
             msgEl.innerHTML = `
                 ${avatarHTML}
