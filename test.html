@@ -185,7 +185,7 @@
                         <span>🚀 System Release Update</span>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        Mesh Chat updated with mutual auto-friending (requesting each other automatically accepts), WebRTC voice and video calling, DM permissions, and YouTube embeds.
+                        Mesh Chat updated with case-insensitive friend validation, mutual auto-accept requests, WebRTC video calling, and DM controls.
                     </p>
                     <span class="text-[10px] text-slate-500 block">System Log</span>
                 </div>
@@ -239,8 +239,15 @@
         let unreadCount = 0;
         let isTabActive = true;
 
-        // Friends & DMs State
+        // Friends & DMs State (Stored as Set)
         let userFriends = new Set();
+
+        // Helper: Check case-insensitive friend status
+        function isUserFriend(username) {
+            if (!username) return false;
+            const targetLower = username.trim().toLowerCase();
+            return Array.from(userFriends).some(f => f.trim().toLowerCase() === targetLower);
+        }
 
         // WebRTC & Calling State
         let peerConnection = null;
@@ -521,7 +528,7 @@
             authError.classList.remove('hidden');
         }
 
-        function initAuthenticatedSession(user, username) {
+        async function initAuthenticatedSession(user, username) {
             currentUser = { id: user.id, username, avatar_url: user.avatar_url };
             document.getElementById('current-user-display').textContent = username;
             
@@ -535,7 +542,7 @@
             addSystemUpdate(`User <b>${escapeHTML(username)}</b> connected to node.`);
 
             listenToPersonalSignaling();
-            loadFriends();
+            await loadFriends();
             listenToFriendsRealtime();
             loadChannelMessages();
             startFastPolling();
@@ -583,6 +590,7 @@
             if (existing) {
                 if (existing.status === 'accepted') {
                     alert("You are already friends!");
+                    await loadFriends();
                     return;
                 }
 
@@ -602,7 +610,7 @@
                         } else {
                             alert(`🎉 Mutual request! You and ${targetUser.username} are now friends!`);
                             input.value = '';
-                            loadFriends();
+                            await loadFriends();
                         }
                         return;
                     }
@@ -620,7 +628,7 @@
             else {
                 alert(`Friend request sent to ${targetUser.username}!`);
                 input.value = '';
-                loadFriends();
+                await loadFriends();
             }
         });
 
@@ -729,16 +737,16 @@
 
         async function acceptFriend(id) {
             await supabaseClient.from('friends').update({ status: 'accepted' }).eq('id', id);
-            loadFriends();
+            await loadFriends();
         }
 
         async function removeFriend(id) {
             await supabaseClient.from('friends').delete().eq('id', id);
-            loadFriends();
+            await loadFriends();
         }
 
         function openDM(targetUsername) {
-            if (!userFriends.has(targetUsername)) {
+            if (!isUserFriend(targetUsername)) {
                 return alert("You can only DM users who are on your friends list.");
             }
 
@@ -767,8 +775,8 @@
         function listenToFriendsRealtime() {
             supabaseClient
                 .channel('public:friends')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => {
-                    loadFriends();
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, async () => {
+                    await loadFriends();
                 })
                 .subscribe();
         }
@@ -838,7 +846,7 @@
             if (activeChannel === 'updates') return;
 
             if (activeChannel.startsWith('dm__')) {
-                if (activeDMUser && !userFriends.has(activeDMUser)) {
+                if (activeDMUser && !isUserFriend(activeDMUser)) {
                     chatBox.innerHTML = `<div class="p-4 text-center text-rose-400 text-xs font-bold bg-rose-950/20 border border-rose-500/30 rounded-xl">You can only direct message users who are on your friends list.</div>`;
                     return;
                 }
@@ -957,7 +965,7 @@
             if ((!text && !selectedFile) || !currentUser) return;
 
             if (activeChannel.startsWith('dm__')) {
-                if (activeDMUser && !userFriends.has(activeDMUser)) {
+                if (activeDMUser && !isUserFriend(activeDMUser)) {
                     return alert("Cannot send message. You must be friends to exchange DMs.");
                 }
             }
@@ -1058,7 +1066,10 @@
                 return alert("You cannot call yourself.");
             }
 
-            if (!userFriends.has(targetUsername)) {
+            // Always ensure friends list is synced before checking
+            await loadFriends();
+
+            if (!isUserFriend(targetUsername)) {
                 return alert(`You can only call users who are on your friends list! Add ${targetUsername} as a friend first.`);
             }
 
@@ -1117,7 +1128,9 @@
                 return;
             }
 
-            if (!userFriends.has(payload.callerUsername)) {
+            await loadFriends();
+
+            if (!isUserFriend(payload.callerUsername)) {
                 sendSignalToUser(payload.callerUsername, { type: 'end-call' });
                 return;
             }
