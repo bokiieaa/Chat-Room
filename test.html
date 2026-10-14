@@ -185,7 +185,7 @@
                         <span>🚀 System Release Update</span>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        Mesh Chat initialized with tab notifications, direct messaging, friend systems, WebRTC voice/video calling, YouTube embedded player, and profile picture customization.
+                        Mesh Chat updated with mutual auto-friending (requesting each other automatically accepts), WebRTC voice and video calling, DM permissions, and YouTube embeds.
                     </p>
                     <span class="text-[10px] text-slate-500 block">System Log</span>
                 </div>
@@ -552,6 +552,7 @@
             return `dm__${sorted[0]}__${sorted[1]}`;
         }
 
+        // ADD FRIEND WITH MUTUAL AUTO-ACCEPT LOGIC
         document.getElementById('add-friend-btn').addEventListener('click', async () => {
             const input = document.getElementById('friend-username-input');
             const targetUsername = input.value.trim();
@@ -568,7 +569,7 @@
 
             if (findErr || !targetUser) return alert("User not found.");
 
-            // Check existing friend request using robust array filtering
+            // Fetch existing friendship records for currentUser
             const { data: existingRecords } = await supabaseClient
                 .from('friends')
                 .select('*')
@@ -580,11 +581,35 @@
             );
 
             if (existing) {
-                if (existing.status === 'accepted') alert("You are already friends!");
-                else alert("A friend request is already pending.");
-                return;
+                if (existing.status === 'accepted') {
+                    alert("You are already friends!");
+                    return;
+                }
+
+                if (existing.status === 'pending') {
+                    if (existing.user_id === currentUser.id) {
+                        alert("Friend request already sent! Waiting for them to accept.");
+                        return;
+                    } else {
+                        // The target user already requested us! MUTUAL REQUEST -> AUTO-ACCEPT!
+                        const { error: acceptErr } = await supabaseClient
+                            .from('friends')
+                            .update({ status: 'accepted' })
+                            .eq('id', existing.id);
+
+                        if (acceptErr) {
+                            alert("Error accepting friend request: " + acceptErr.message);
+                        } else {
+                            alert(`🎉 Mutual request! You and ${targetUser.username} are now friends!`);
+                            input.value = '';
+                            loadFriends();
+                        }
+                        return;
+                    }
+                }
             }
 
+            // No existing relationship, create new pending request
             const { error } = await supabaseClient.from('friends').insert([{
                 user_id: currentUser.id,
                 friend_id: targetUser.id,
@@ -603,7 +628,6 @@
             if (!currentUser) return;
 
             try {
-                // Fetch all friend records involving currentUser
                 const { data: records, error } = await supabaseClient
                     .from('friends')
                     .select('*')
@@ -625,10 +649,8 @@
                     return;
                 }
 
-                // Collect all target profile IDs
                 const otherUserIds = [...new Set(records.map(r => r.user_id === currentUser.id ? r.friend_id : r.user_id))];
 
-                // Fetch profile data directly to avoid PostgREST FK schema issues
                 const { data: profiles } = await supabaseClient
                     .from('profiles')
                     .select('id, username, avatar_url')
@@ -1036,7 +1058,6 @@
                 return alert("You cannot call yourself.");
             }
 
-            // STRICT FRIEND ENFORCEMENT: ONLY CALL FRIENDS!
             if (!userFriends.has(targetUsername)) {
                 return alert(`You can only call users who are on your friends list! Add ${targetUsername} as a friend first.`);
             }
@@ -1096,7 +1117,6 @@
                 return;
             }
 
-            // Verify caller is a friend
             if (!userFriends.has(payload.callerUsername)) {
                 sendSignalToUser(payload.callerUsername, { type: 'end-call' });
                 return;
