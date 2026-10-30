@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Chat</title>
+    <title>Mesh Chat (Supabase)</title>
     <link id="favicon" rel="icon" type="image/png" href="icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        #chat-box::-webkit-scrollbar, #friends-list::-webkit-scrollbar, #admin-reports-list::-webkit-scrollbar, #presence-modal-list::-webkit-scrollbar { width: 6px; }
-        #chat-box::-webkit-scrollbar-track, #friends-list::-webkit-scrollbar-track, #admin-reports-list::-webkit-scrollbar-track, #presence-modal-list::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        #chat-box::-webkit-scrollbar-thumb, #friends-list::-webkit-scrollbar-thumb, #admin-reports-list::-webkit-scrollbar-thumb, #presence-modal-list::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
+        #chat-box::-webkit-scrollbar, #friends-list::-webkit-scrollbar, #admin-reports-list::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track, #friends-list::-webkit-scrollbar-track, #admin-reports-list::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        #chat-box::-webkit-scrollbar-thumb, #friends-list::-webkit-scrollbar-thumb, #admin-reports-list::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 9999px; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col md:flex-row font-sans overflow-hidden antialiased">
@@ -62,27 +63,6 @@
             </div>
 
             <div class="space-y-2 pt-2 border-t border-slate-800">
-                <label class="text-xs font-bold text-slate-400 uppercase">Broadcast Alert</label>
-                <div class="flex gap-2">
-                    <input type="text" id="admin-broadcast-text" placeholder="Global announcement..." class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
-                    <button id="admin-broadcast-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer">Broadcast</button>
-                </div>
-            </div>
-
-            <div class="space-y-2 pt-2 border-t border-slate-800">
-                <label class="text-xs font-bold text-slate-400 uppercase">Direct Moderation</label>
-                <div class="space-y-2">
-                    <input type="text" id="admin-target-user" placeholder="Target Username" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
-                    <input type="text" id="admin-mod-reason" placeholder="Reason (optional)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
-                    <div class="flex gap-2">
-                        <button onclick="executeAdminAction('warn')" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Warn</button>
-                        <button onclick="executeAdminAction('kick')" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Kick</button>
-                        <button onclick="executeAdminAction('ban')" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Ban Account</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="space-y-2 pt-2 border-t border-slate-800">
                 <h3 class="text-xs font-bold text-slate-400 uppercase">Incoming Reports</h3>
                 <div id="admin-reports-list" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
             </div>
@@ -101,22 +81,11 @@
         </div>
     </div>
 
-    <!-- Global Announcement Modal -->
-    <div id="global-announcement-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-indigo-500 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-4 text-center">
-            <div id="popup-title" class="text-indigo-400 font-black text-sm uppercase tracking-wider">📢 Notice</div>
-            <p id="global-announcement-text" class="text-sm text-slate-200 bg-slate-950 p-4 rounded-xl border border-slate-800 break-words"></p>
-            <button onclick="document.getElementById('global-announcement-modal').classList.add('hidden')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">Got It</button>
-        </div>
-    </div>
-
     <!-- Online Users Drawer Modal -->
     <div id="presence-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-4 max-h-[80vh] flex flex-col">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    👥 User Directory
-                </h3>
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">👥 User Directory</h3>
                 <button onclick="document.getElementById('presence-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 font-bold">&times;</button>
             </div>
             <div id="presence-modal-list" class="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -137,7 +106,7 @@
         <div class="bg-slate-900 border border-indigo-500 p-6 rounded-2xl max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div class="w-16 h-16 rounded-full bg-indigo-600 mx-auto flex items-center justify-center text-xl font-bold animate-pulse">📞</div>
             <div>
-                <h3 class="text-base font-bold text-slate-100">Incoming Call</h3>
+                <h3 class="text-base font-bold text-slate-100">Incoming Voice Call</h3>
                 <p id="incoming-caller-text" class="text-xs text-indigo-400 mt-1"></p>
             </div>
             <div class="flex gap-2">
@@ -209,40 +178,38 @@
         </div>
     </div>
 
-    <!-- Active Call Container -->
-    <div id="call-container" class="hidden fixed inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full mb-4">
-            <video id="local-video" autoplay muted playsinline class="bg-black rounded-xl border border-slate-800 w-full aspect-video object-cover"></video>
-            <video id="remote-video" autoplay playsinline class="bg-black rounded-xl border border-slate-800 w-full aspect-video object-cover"></video>
+    <!-- Active Call Bar -->
+    <div id="call-bar" class="hidden bg-indigo-950/80 border-b border-indigo-500/30 px-4 py-2.5 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+            <span class="relative flex h-3 w-3 shrink-0">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <span id="call-status" class="text-xs font-bold text-indigo-200 truncate">Connected</span>
+            <audio id="remote-audio" autoplay></audio>
         </div>
-        <div class="flex gap-3">
-            <button id="toggle-audio-btn" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Mute Mic</button>
-            <button id="toggle-video-btn" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Camera Off</button>
-            <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">End Call</button>
-        </div>
+        <button id="end-call-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ml-2">End Call</button>
     </div>
 
-    <!-- Auth Access Modal -->
+    <!-- Auth Modal -->
     <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-5">
             <div class="text-center">
                 <h2 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Mesh Network Access</h2>
-                <p id="auth-subtitle" class="text-xs text-slate-400 mt-1">Username rules: lowercase letters, numbers, _ and . only (no spaces, no capitals)</p>
+                <p id="auth-subtitle" class="text-xs text-slate-400 mt-1">Rules: lowercase letters, numbers, _ and . only (no spaces, no capitals)</p>
             </div>
             
             <form id="auth-form" onsubmit="return false;" class="space-y-4">
-                <div id="auth-fields-container" class="space-y-4">
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Username</label>
-                        <input type="text" id="auth-username" required maxlength="25" placeholder="username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
-                        <input type="password" id="auth-password" required maxlength="25" placeholder="••••••••" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
-                    </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Username</label>
+                    <input type="text" id="auth-username" required placeholder="username" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                 </div>
 
-                <div id="auth-buttons" class="flex gap-2 pt-2">
+                <div class="flex gap-2 pt-2">
                     <button type="button" id="login-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">LOG IN</button>
                     <button type="button" id="signup-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold py-2.5 rounded-lg transition-colors cursor-pointer">SIGN UP</button>
                 </div>
@@ -298,7 +265,7 @@
             </div>
         </div>
 
-        <!-- Sidebar User Footer -->
+        <!-- Footer Profile -->
         <div class="p-3 border-t border-slate-800 flex items-center justify-between shrink-0 bg-slate-950/40">
             <div class="flex items-center gap-2 min-w-0">
                 <div onclick="document.getElementById('pfp-upload-input').click()" class="relative group cursor-pointer shrink-0" title="Change Avatar">
@@ -315,7 +282,6 @@
 
     <!-- Main Workspace -->
     <main class="flex-1 flex flex-col bg-slate-950 min-w-0 overflow-hidden h-full">
-        <!-- Header -->
         <header class="p-3 sm:p-4 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
                 <h1 id="active-channel-title" class="text-sm font-bold text-slate-200 truncate"># general</h1>
@@ -323,7 +289,6 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <!-- Online Presence Drawer Trigger -->
                 <button id="online-users-count-btn" onclick="openPresenceModal()" class="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-800 text-indigo-300 px-2.5 py-1 rounded-lg border border-slate-800 transition-colors cursor-pointer" title="View Users Online">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span id="online-counter-text" class="font-bold">0 Online</span>
@@ -335,10 +300,10 @@
             </div>
         </header>
 
-        <!-- Message List Container -->
+        <!-- Message Feed -->
         <div id="chat-box" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0"></div>
 
-        <!-- Typing Indicator Banner -->
+        <!-- Typing Indicator -->
         <div id="typing-indicator" class="hidden px-4 py-1 text-[11px] text-indigo-300/80 italic shrink-0"></div>
 
         <!-- Reply Preview Banner -->
@@ -349,57 +314,70 @@
             <button id="cancel-reply-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
         </div>
 
-        <!-- File Upload Preview Banner -->
+        <!-- Media Preview Banner -->
         <div id="file-preview" class="hidden bg-slate-900 border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-indigo-300 shrink-0 min-w-0 gap-2">
             <span id="file-preview-name" class="truncate flex-1 min-w-0"></span>
             <button id="cancel-file-btn" class="text-slate-500 hover:text-slate-300 font-bold shrink-0 text-base px-1.5 cursor-pointer">&times;</button>
         </div>
 
-        <!-- Input Footer with @Mention Suggestion Box -->
+        <!-- Input Footer -->
         <footer id="chat-footer" class="p-3 pb-8 sm:pb-4 bg-slate-900/80 border-t border-slate-800 shrink-0 relative">
-            
-            <!-- @Mention Auto-complete Popup -->
             <div id="mention-autocomplete" class="hidden absolute bottom-full left-4 mb-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 max-h-40 overflow-y-auto min-w-[200px] z-30 space-y-1"></div>
 
             <form id="chat-form" class="flex items-center gap-2 min-w-0">
                 <label for="media-file-input" title="Attach Media" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors border border-slate-700 shrink-0 flex items-center justify-center">📎</label>
                 <input type="file" id="media-file-input" class="hidden" accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.zip">
-                <input type="text" id="msg-input" maxlength="200" placeholder="Message (max 200 chars)..." autocomplete="off" class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                <input type="text" id="msg-input" placeholder="Broadcast message..." autocomplete="off" class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
                 <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase px-4 sm:px-5 py-2.5 rounded-xl transition-colors cursor-pointer shrink-0">Send</button>
             </form>
         </footer>
     </main>
 
     <script>
+        const SUPABASE_URL = "https://yygscvzdlfudhjmyhuxu.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_AAAy7XWb589B4sBcR5Sqjw__sOLyOlE";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         let currentUser = null;
         let activeChannel = 'general';
         let activeReplyId = null;
         let activeReplyUser = null;
         let activeReplyText = null;
         let selectedFile = null;
-        let ws = null;
-        let userFriends = new Set();
+        let knownMessageIds = new Set();
+        let fastPollingInterval = null;
         let userProfileCache = new Map();
+        let userFriends = new Set();
         let unreadCounts = {};
-        let totalUnreadMentions = 0;
-        let localStream = null;
-        let peerConnection = null;
-        let activeReportTarget = null;
-        let contextChannelId = null;
-        let contextChannelName = null;
-        let ringInterval = null;
-        let pendingIncomingCall = null;
-        
+
         // Presence & Standing
-        let onlineUsersMap = new Map(); // username -> standing ('online', 'idle', 'dnd', 'offline')
+        let onlineUsersMap = new Map();
         let allKnownUsers = new Set();
         let manualStanding = 'online';
         let typingTimeout = null;
+        let presenceChannel = null;
 
-        // Strict Username Validation Regex (lowercase letters, numbers, _, . only)
         const USERNAME_REGEX = /^[a-z0-9_.]+$/;
 
-        // DOM References
+        // Context menu & Modals state
+        let contextChannelId = null;
+        let contextChannelName = null;
+        let activeReportTarget = null;
+        let pendingOfferPayload = null;
+
+        // WebRTC variables
+        let peerConnection = null;
+        let localStream = null;
+        let activeCallTarget = null;
+        let personalSignalingChannel = null;
+
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
         const authModal = document.getElementById('auth-modal');
         const authError = document.getElementById('auth-error');
         const profileModal = document.getElementById('profile-modal');
@@ -416,53 +394,17 @@
         const mentionAutocomplete = document.getElementById('mention-autocomplete');
         const typingIndicator = document.getElementById('typing-indicator');
 
-        // Automatic Tab Blur/Focus Standing Handler (Idle)
+        // Auto Idle on Blur / Focus
         window.addEventListener('blur', () => {
             if (currentUser && manualStanding === 'online') {
-                broadcastPresenceUpdate('idle');
+                updateStandingState('idle');
             }
         });
-
         window.addEventListener('focus', () => {
             if (currentUser && manualStanding === 'online') {
-                broadcastPresenceUpdate('online');
+                updateStandingState('online');
             }
         });
-
-        function getMutedChannels() {
-            try { return JSON.parse(localStorage.getItem('muted_channels') || '{}'); } catch (e) { return {}; }
-        }
-
-        function setMutedChannels(muted) {
-            localStorage.setItem('muted_channels', JSON.stringify(muted));
-        }
-
-        function isChannelMuted(channelId) {
-            if (channelId === 'announcements') return false;
-            return !!getMutedChannels()[channelId];
-        }
-
-        function toggleMuteChannel(channelId) {
-            if (channelId === 'announcements') return alert("Announcements channel cannot be muted.");
-            const muted = getMutedChannels();
-            muted[channelId] = !muted[channelId];
-            setMutedChannels(muted);
-            updateMuteUI();
-            loadChannels();
-        }
-
-        function toggleMuteCurrentChannel() { toggleMuteChannel(activeChannel); }
-
-        function updateMuteUI() {
-            const btn = document.getElementById('header-mute-btn');
-            if (activeChannel === 'announcements') {
-                btn.style.display = 'none';
-                return;
-            } else {
-                btn.style.display = 'inline-block';
-            }
-            btn.textContent = isChannelMuted(activeChannel) ? "🔔 Unmute" : "🔕 Mute";
-        }
 
         window.addEventListener('click', (e) => {
             if (!e.target.closest('#mention-autocomplete') && e.target !== msgInput) {
@@ -471,112 +413,147 @@
             contextMenu.classList.add('hidden');
         });
 
-        function connectWebSocket() {
-            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${proto}//${window.location.host}`);
-            ws.onopen = () => {
-                if (currentUser) {
-                    ws.send(JSON.stringify({ 
-                        type: 'auth', 
-                        username: currentUser.username, 
-                        standing: manualStanding,
-                        custom_status: currentUser.custom_status
-                    }));
-                    ws.send(JSON.stringify({ type: 'get_presence' }));
-                }
-            };
+        function getMutedChannels() {
+            try { return JSON.parse(localStorage.getItem('muted_channels') || '{}'); } catch(e) { return {}; }
+        }
+        function setMutedChannels(muted) { localStorage.setItem('muted_channels', JSON.stringify(muted)); }
+        function isChannelMuted(channelId) {
+            if (channelId === 'announcements') return false;
+            return !!getMutedChannels()[channelId];
+        }
+        function toggleMuteChannel(channelId) {
+            if (channelId === 'announcements') return alert("Announcements cannot be muted.");
+            const muted = getMutedChannels();
+            muted[channelId] = !muted[channelId];
+            setMutedChannels(muted);
+            updateMuteUI();
+            loadChannels();
+        }
+        function toggleMuteCurrentChannel() { toggleMuteChannel(activeChannel); }
+        function updateMuteUI() {
+            const btn = document.getElementById('header-mute-btn');
+            if (activeChannel === 'announcements') { btn.style.display = 'none'; return; }
+            btn.style.display = 'inline-block';
+            btn.textContent = isChannelMuted(activeChannel) ? "🔔 Unmute" : "🔕 Mute";
+        }
 
-            ws.onmessage = async (event) => {
-                const data = JSON.parse(event.data);
-                
-                if (data.type === 'global_announcement') {
-                    document.getElementById('popup-title').textContent = '📢 Global Admin Announcement';
-                    document.getElementById('global-announcement-text').textContent = data.message;
-                    document.getElementById('global-announcement-modal').classList.remove('hidden');
+        // --- AUTHENTICATION WITH STRICT USERNAME RULES ---
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
 
-                } else if (data.type === 'warn' && currentUser && data.userId === currentUser.id) {
-                    document.getElementById('popup-title').textContent = '⚠️ Admin Warning Issued';
-                    document.getElementById('global-announcement-text').textContent = data.reason;
-                    document.getElementById('global-announcement-modal').classList.remove('hidden');
+        document.getElementById('signup-btn').addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
 
-                } else if (data.type === 'kick' && currentUser && data.userId === currentUser.id) {
-                    alert(`You have been kicked. Reason: ${data.reason}`);
-                    window.location.reload();
+            if (!USERNAME_REGEX.test(username)) {
+                return showAuthError("Username can ONLY contain lowercase letters, numbers, underscores (_), and dots (.). No capitals or spaces.");
+            }
+            if (!password || password.length < 6) return showAuthError("Password must be at least 6 characters.");
 
-                } else if (data.type === 'ban' && currentUser && (data.userId === currentUser.id || data.username === currentUser.username)) {
-                    alert(`You have been banned. Reason: ${data.reason}`);
-                    window.location.reload();
+            const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', username).maybeSingle();
+            if (existing) return showAuthError("Username already taken.");
 
-                } else if (data.type === 'admin_updated') {
-                    if (currentUser && data.username === currentUser.username) {
-                        currentUser.is_admin = data.is_admin;
-                        alert(data.is_admin ? "You are now an Admin!" : "Your admin privileges were revoked.");
-                        if (currentUser.is_admin) {
-                            document.getElementById('open-admin-panel-btn').classList.remove('hidden');
-                        } else {
-                            document.getElementById('open-admin-panel-btn').classList.add('hidden');
-                        }
-                    }
+            const password_hash = await hashPassword(password);
+            const userId = crypto.randomUUID();
 
-                } else if (data.type === 'message') {
-                    const isSender = currentUser && data.user_id === currentUser.id;
-                    if (data.channel_id === activeChannel) {
-                        appendMessageUI(data);
-                    } else {
-                        unreadCounts[data.channel_id] = (unreadCounts[data.channel_id] || 0) + 1;
-                        updateNotificationBadges();
-                    }
+            const { error } = await supabaseClient.from('profiles').insert([{ id: userId, username, password_hash, display_name: username, standing: 'online' }]);
+            if (error) return showAuthError(error.message);
 
-                } else if (data.type === 'typing') {
-                    if (data.channel_id === activeChannel && data.username !== currentUser?.username) {
-                        typingIndicator.textContent = `@${data.username} is typing...`;
+            initAuthenticatedSession({ id: userId, username, display_name: username, avatar_url: null, bio: '', standing: 'online', is_admin: 0 });
+        });
+
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            authError.classList.add('hidden');
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (!username || !password) return showAuthError("Username and password required.");
+
+            const password_hash = await hashPassword(password);
+            const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('username', username).maybeSingle();
+
+            if (error || !profile) return showAuthError("Account not found.");
+            if (profile.password_hash !== password_hash) return showAuthError("Incorrect password.");
+
+            initAuthenticatedSession(profile);
+        });
+
+        function showAuthError(msg) {
+            authError.textContent = msg;
+            authError.classList.remove('hidden');
+        }
+
+        function initAuthenticatedSession(profile) {
+            currentUser = profile;
+            manualStanding = profile.standing || 'online';
+            updateUserDisplayUI();
+            authModal.classList.add('hidden');
+
+            setupPresenceRealtime();
+            listenToPersonalSignaling();
+            loadFriends();
+            listenToFriendsRealtime();
+            loadChannels();
+            loadChannelMessages();
+            startFastPolling();
+            listenToRealtimeMessages();
+
+            if (currentUser.is_admin === 1 || currentUser.username.toLowerCase() === 'sillygoobah33') {
+                document.getElementById('open-admin-panel-btn').classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => window.location.reload());
+
+        // --- PRESENCE & STANDING ---
+        function setupPresenceRealtime() {
+            presenceChannel = supabaseClient.channel('online-users', {
+                config: { presence: { key: currentUser.username } }
+            });
+
+            presenceChannel
+                .on('presence', { event: 'sync' }, () => {
+                    const state = presenceChannel.presenceState();
+                    onlineUsersMap.clear();
+                    Object.keys(state).forEach(uname => {
+                        allKnownUsers.add(uname);
+                        const userPresence = state[uname][0];
+                        onlineUsersMap.set(uname, userPresence ? userPresence.standing : 'online');
+                    });
+                    updatePresenceUI();
+                })
+                .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                    if (payload.channel_id === activeChannel && payload.username !== currentUser?.username) {
+                        typingIndicator.textContent = `@${payload.username} is typing...`;
                         typingIndicator.classList.remove('hidden');
                         clearTimeout(typingTimeout);
                         typingTimeout = setTimeout(() => typingIndicator.classList.add('hidden'), 2500);
                     }
-
-                } else if (data.type === 'presence') {
-                    // Update Online Presence Map
-                    if (data.usersMap) {
-                        onlineUsersMap = new Map(Object.entries(data.usersMap));
+                })
+                .subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        await presenceChannel.track({
+                            username: currentUser.username,
+                            standing: manualStanding,
+                            custom_status: currentUser.custom_status || ''
+                        });
                     }
-                    if (data.allUsers) {
-                        data.allUsers.forEach(u => allKnownUsers.add(u));
-                    }
-                    updatePresenceUI();
-
-                } else if (data.type === 'signal') {
-                    handleSignalingData(data);
-                }
-            };
+                });
         }
 
-        function broadcastPresenceUpdate(standing) {
-            if (ws && ws.readyState === WebSocket.OPEN && currentUser) {
-                ws.send(JSON.stringify({
-                    type: 'presence_update',
+        async function updateStandingState(newStanding) {
+            if (presenceChannel) {
+                await presenceChannel.track({
                     username: currentUser.username,
-                    standing: standing,
-                    custom_status: currentUser.custom_status
-                }));
+                    standing: newStanding,
+                    custom_status: currentUser.custom_status || ''
+                });
             }
-        }
-
-        function updatePresenceUI() {
-            // Count total non-offline users
-            let onlineCount = 0;
-            onlineUsersMap.forEach((info, uname) => {
-                const standing = typeof info === 'string' ? info : info.standing;
-                if (standing && standing !== 'offline') onlineCount++;
-            });
-
-            document.getElementById('online-counter-text').textContent = `${onlineCount} Online`;
-
-            // Self standing indicator
-            const dot = document.getElementById('self-standing-dot');
-            dot.className = `w-2.5 h-2.5 rounded-full inline-block ${getStandingColorClass(manualStanding)}`;
-
-            loadFriends();
         }
 
         function getStandingColorClass(standing) {
@@ -592,180 +569,36 @@
             return `<span class="inline-block w-2.5 h-2.5 rounded-full ${getStandingColorClass(standing)} shrink-0"></span>`;
         }
 
-        // --- AUTHENTICATION WITH STRICT USERNAME RULES ---
-        async function hashPassword(password) {
-            let hash = 0;
-            for (let i = 0; i < password.length; i++) {
-                hash = ((hash << 5) - hash) + password.charCodeAt(i);
-                hash |= 0;
-            }
-            return Math.abs(hash).toString(16);
-        }
-
-        document.getElementById('signup-btn').addEventListener('click', async () => {
-            const username = document.getElementById('auth-username').value.trim();
-            const password = document.getElementById('auth-password').value;
-
-            // Strict Validation
-            if (!USERNAME_REGEX.test(username)) {
-                return showAuthError("Username can ONLY contain lowercase letters, numbers, underscores (_), and dots (.). No capitals or spaces allowed.");
-            }
-            if (!password) return showAuthError("Password is required.");
-
-            const password_hash = await hashPassword(password);
-            const res = await fetch('/api/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: Math.random().toString(36).substring(2), username, password_hash })
+        function updatePresenceUI() {
+            let onlineCount = 0;
+            onlineUsersMap.forEach((standing) => {
+                if (standing && standing !== 'offline') onlineCount++;
             });
-            const data = await res.json();
-            if (data.error) return showAuthError(data.error);
-            initSession(data.user);
-        });
-
-        document.getElementById('login-btn').addEventListener('click', async () => {
-            const username = document.getElementById('auth-username').value.trim();
-            const password = document.getElementById('auth-password').value;
-            if (!username || !password) return showAuthError("Fill in all fields.");
-
-            const password_hash = await hashPassword(password);
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password_hash })
-            });
-            const data = await res.json();
-            if (data.error) return showAuthError(data.error);
-            initSession(data.user);
-        });
-
-        function showAuthError(msg) {
-            authError.textContent = msg;
-            authError.classList.remove('hidden');
-        }
-
-        function initSession(user) {
-            currentUser = user;
-            manualStanding = user.standing || 'online';
-            updateUserDisplayUI();
-            authModal.classList.add('hidden');
-            connectWebSocket();
+            document.getElementById('online-counter-text').textContent = `${onlineCount} Online`;
+            document.getElementById('self-standing-dot').className = `w-2.5 h-2.5 rounded-full inline-block ${getStandingColorClass(manualStanding)}`;
             loadFriends();
-            loadChannels();
-            loadChannelMessages();
-            setupChannelSwitching();
-
-            if (currentUser.is_admin === 1) {
-                document.getElementById('open-admin-panel-btn').classList.remove('hidden');
-            }
         }
 
-        // --- ADMIN ROLE GIVER / TAKER ---
-        async function toggleAdminRole(grant) {
-            const targetUsername = document.getElementById('admin-role-target-user').value.trim();
-            if (!targetUsername) return alert("Enter target username.");
-
-            const res = await fetch('/api/admin/set-admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminUsername: currentUser.username, targetUsername, is_admin: grant ? 1 : 0 })
-            });
-            const data = await res.json();
-            if (data.error) {
-                alert(data.error);
-            } else {
-                alert(`Successfully ${grant ? 'granted admin to' : 'revoked admin from'} @${targetUsername}`);
-                document.getElementById('admin-role-target-user').value = '';
-            }
-        }
-
-        document.getElementById('open-admin-panel-btn').addEventListener('click', () => {
-            document.getElementById('admin-panel-modal').classList.remove('hidden');
-            loadAdminReports();
-        });
-
-        document.getElementById('admin-broadcast-btn').addEventListener('click', async () => {
-            const text = document.getElementById('admin-broadcast-text').value.trim();
-            if (!text) return;
-            await fetch('/api/admin/broadcast', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUser.username, message: text })
-            });
-            document.getElementById('admin-broadcast-text').value = '';
-            alert("Broadcast sent!");
-        });
-
-        async function executeAdminAction(actionType) {
-            const targetUsername = document.getElementById('admin-target-user').value.trim();
-            const reason = document.getElementById('admin-mod-reason').value.trim();
-            if (!targetUsername) return alert("Enter target username.");
-
-            const res = await fetch(`/api/admin/${actionType}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminUsername: currentUser.username, targetUsername, reason })
-            });
-            const data = await res.json();
-            if (data.error) alert(data.error);
-            else alert(`Executed ${actionType} on @${targetUsername}`);
-        }
-
-        async function loadAdminReports() {
-            const res = await fetch(`/api/admin/reports?username=${currentUser.username}`);
-            const reports = await res.json();
-            const list = document.getElementById('admin-reports-list');
-            list.innerHTML = '';
-            if (!reports || reports.length === 0) {
-                list.innerHTML = '<p class="text-xs text-slate-500 italic">No pending reports.</p>';
-                return;
-            }
-            reports.forEach(r => {
-                const div = document.createElement('div');
-                div.className = "bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs space-y-1";
-                div.innerHTML = `
-                    <div class="flex justify-between font-bold text-slate-300">
-                        <span>Report by @${escapeHTML(r.reporter_username)}</span>
-                    </div>
-                    <p class="text-slate-400">Target (${escapeHTML(r.target_type)}): <b>${escapeHTML(r.target_id)}</b></p>
-                    <p class="text-slate-300 italic">"${escapeHTML(r.reason)}"</p>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        // --- ONLINE PRESENCE DRAWER / MODAL ---
         function openPresenceModal() {
             const onlineContainer = document.getElementById('presence-online-users');
             const offlineContainer = document.getElementById('presence-offline-users');
             onlineContainer.innerHTML = '';
             offlineContainer.innerHTML = '';
 
-            const allUsersArr = Array.from(allKnownUsers);
-
-            allUsersArr.forEach(uname => {
-                const presenceInfo = onlineUsersMap.get(uname);
-                const standing = presenceInfo ? (typeof presenceInfo === 'string' ? presenceInfo : presenceInfo.standing) : 'offline';
-                const customStatus = (presenceInfo && typeof presenceInfo === 'object') ? presenceInfo.custom_status : '';
-
+            Array.from(allKnownUsers).forEach(uname => {
+                const standing = onlineUsersMap.get(uname) || 'offline';
                 const userDiv = document.createElement('div');
                 userDiv.className = "flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 text-xs";
                 userDiv.innerHTML = `
                     <div class="flex items-center gap-2 cursor-pointer" onclick="showUserProfile('${uname}')">
                         ${renderStandingBadgeDot(standing)}
-                        <div>
-                            <span class="font-bold text-slate-200 hover:underline">@${escapeHTML(uname)}</span>
-                            ${customStatus ? `<span class="text-[10px] text-indigo-300 block italic">"${escapeHTML(customStatus)}"</span>` : ''}
-                        </div>
+                        <span class="font-bold text-slate-200 hover:underline">@${escapeHTML(uname)}</span>
                     </div>
                     <span class="text-[10px] text-slate-500 uppercase font-bold">${standing}</span>
                 `;
 
-                if (standing !== 'offline') {
-                    onlineContainer.appendChild(userDiv);
-                } else {
-                    offlineContainer.appendChild(userDiv);
-                }
+                if (standing !== 'offline') onlineContainer.appendChild(userDiv);
+                else offlineContainer.appendChild(userDiv);
             });
 
             if (!onlineContainer.hasChildNodes()) onlineContainer.innerHTML = '<p class="text-xs text-slate-500 italic">None online</p>';
@@ -774,7 +607,20 @@
             document.getElementById('presence-modal').classList.remove('hidden');
         }
 
-        // --- PROFILE & CUSTOM STATUS EXPIRATION ---
+        // --- ADMIN ROLE MANAGEMENT ---
+        async function toggleAdminRole(grant) {
+            const targetUsername = document.getElementById('admin-role-target-user').value.trim().toLowerCase();
+            if (!targetUsername) return alert("Enter target username.");
+
+            const { error } = await supabaseClient.from('profiles').update({ is_admin: grant ? 1 : 0 }).eq('username', targetUsername);
+            if (error) alert("Failed: " + error.message);
+            else {
+                alert(`Successfully ${grant ? 'granted admin to' : 'revoked admin from'} @${targetUsername}`);
+                document.getElementById('admin-role-target-user').value = '';
+            }
+        }
+
+        // --- PROFILE EDITING ---
         document.getElementById('open-profile-btn').addEventListener('click', () => {
             document.getElementById('edit-display-name').value = currentUser.display_name || currentUser.username;
             document.getElementById('edit-bio').value = currentUser.bio || '';
@@ -782,7 +628,6 @@
             document.getElementById('edit-status-text').value = currentUser.custom_status || '';
             profileModal.classList.remove('hidden');
         });
-
         document.getElementById('close-profile-btn').addEventListener('click', () => profileModal.classList.add('hidden'));
 
         document.getElementById('save-profile-btn').addEventListener('click', async () => {
@@ -790,34 +635,45 @@
             const bio = document.getElementById('edit-bio').value.trim();
             const standing = document.getElementById('edit-standing-select').value;
             const custom_status = document.getElementById('edit-status-text').value.trim();
-            const expiryChoice = document.getElementById('edit-status-expiry').value;
 
-            let status_expires_at = null;
-            if (expiryChoice === '1h') status_expires_at = Date.now() + 3600000;
-            else if (expiryChoice === '24h') status_expires_at = Date.now() + 86400000;
-
-            const res = await fetch('/api/update-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser.id, display_name, bio, standing, custom_status, status_expires_at })
-            });
-            const data = await res.json();
-            if (data.success) {
+            const { error } = await supabaseClient.from('profiles').update({ display_name, bio, standing, custom_status }).eq('id', currentUser.id);
+            if (!error) {
                 currentUser.display_name = display_name;
                 currentUser.bio = bio;
                 currentUser.custom_status = custom_status;
                 manualStanding = standing;
-
                 updateUserDisplayUI();
-                broadcastPresenceUpdate(standing);
+                updateStandingState(standing);
                 profileModal.classList.add('hidden');
             }
+        });
+
+        pfpUploadInput.addEventListener('change', async (e) => {
+            if (!e.target.files || !e.target.files[0] || !currentUser) return;
+            const file = e.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const filePath = `avatars/${currentUser.id}_${Date.now()}.${fileExt}`;
+
+            const { error: uploadErr } = await supabaseClient.storage.from('chat-media').upload(filePath, file, { upsert: true });
+            if (uploadErr) return alert(uploadErr.message);
+
+            const { data: urlData } = supabaseClient.storage.from('chat-media').getPublicUrl(filePath);
+            const avatar_url = urlData.publicUrl;
+
+            await supabaseClient.from('profiles').update({ avatar_url }).eq('id', currentUser.id);
+            currentUser.avatar_url = avatar_url;
+            updateUserDisplayUI();
+            loadChannelMessages();
         });
 
         function updateUserDisplayUI() {
             document.getElementById('current-user-display').textContent = currentUser.display_name || currentUser.username;
             document.getElementById('current-user-status').textContent = currentUser.custom_status ? `💬 ${currentUser.custom_status}` : '';
-            renderAvatar(currentUser.username, currentUser.avatar_url, document.getElementById('user-avatar'));
+            if (currentUser.avatar_url) {
+                renderAvatar(currentUser.username, currentUser.avatar_url, document.getElementById('user-avatar'));
+            } else {
+                document.getElementById('user-avatar').textContent = (currentUser.display_name || currentUser.username).charAt(0).toUpperCase();
+            }
             updatePresenceUI();
         }
 
@@ -826,16 +682,45 @@
             else el.textContent = username.charAt(0).toUpperCase();
         }
 
-        // --- @MENTION AUTO-SUGGEST ---
-        msgInput.addEventListener('input', (e) => {
+        async function fetchProfile(username) {
+            if (userProfileCache.has(username)) return userProfileCache.get(username);
+            const { data } = await supabaseClient.from('profiles').select('*').eq('username', username).maybeSingle();
+            if (data) userProfileCache.set(username, data);
+            return data;
+        }
+
+        async function showUserProfile(username) {
+            const profile = await fetchProfile(username);
+            if (!profile) return alert("Profile not found.");
+
+            const avatarEl = document.getElementById('view-profile-avatar');
+            if (profile.avatar_url) {
+                avatarEl.innerHTML = `<img src="${profile.avatar_url}" class="w-full h-full object-cover rounded-full">`;
+            } else {
+                avatarEl.textContent = (profile.display_name || profile.username).charAt(0).toUpperCase();
+            }
+
+            document.getElementById('view-profile-dname').textContent = profile.display_name || profile.username;
+            document.getElementById('view-profile-uname').textContent = `@${profile.username}`;
+            document.getElementById('view-profile-status').textContent = profile.custom_status ? `💬 ${profile.custom_status}` : `Standing: ${onlineUsersMap.get(username) || 'offline'}`;
+            document.getElementById('view-profile-bio').textContent = profile.bio || "No bio provided.";
+
+            document.getElementById('report-user-btn').onclick = () => {
+                document.getElementById('view-profile-modal').classList.add('hidden');
+                triggerReport('user', username);
+            };
+            document.getElementById('view-profile-modal').classList.remove('hidden');
+        }
+
+        // --- @MENTION AUTOCOMPLETE ---
+        msgInput.addEventListener('input', () => {
             const val = msgInput.value;
             const cursorPosition = msgInput.selectionStart;
             const textBeforeCursor = val.substring(0, cursorPosition);
             const mentionMatch = textBeforeCursor.match(/@([a-z0-9_.]*)$/);
 
-            // Broadcast typing event
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'typing', channel_id: activeChannel, username: currentUser.username }));
+            if (presenceChannel) {
+                presenceChannel.send({ type: 'broadcast', event: 'typing', payload: { channel_id: activeChannel, username: currentUser.username } });
             }
 
             if (mentionMatch) {
@@ -862,162 +747,457 @@
             mentionAutocomplete.classList.add('hidden');
         });
 
-        // --- FRIENDS SYSTEM WITH STANDING DOTS ---
+        // --- CHANNELS & SERVERS ---
+        async function loadChannels() {
+            const { data: channels } = await supabaseClient.from('channels').select('*');
+            const channelList = document.getElementById('channel-list');
+            
+            const generalMuted = isChannelMuted('general');
+            channelList.innerHTML = `
+                <button data-channel="general" data-name="# general" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold ${activeChannel === 'general' ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'} transition-colors flex items-center justify-between cursor-pointer"><span># general</span> ${generalMuted ? '<span class="text-[10px] opacity-60">🔕</span>' : ''}</button>
+                <button data-channel="announcements" data-name="📢 announcements" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold ${activeChannel === 'announcements' ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'} transition-colors flex items-center justify-between cursor-pointer"><span>📢 announcements</span></button>
+            `;
+
+            if (channels) {
+                channels.forEach(chan => {
+                    if (chan.id !== 'general' && chan.id !== 'announcements') {
+                        const btn = document.createElement('button');
+                        btn.dataset.channel = chan.id;
+                        btn.dataset.name = chan.name;
+                        const isActive = activeChannel === chan.id;
+                        const muted = isChannelMuted(chan.id);
+                        btn.className = `channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold ${isActive ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'} transition-colors flex items-center justify-between cursor-pointer`;
+                        btn.innerHTML = `<span>${chan.name}</span> ${muted ? '<span class="text-[10px] opacity-60">🔕</span>' : ''}`;
+                        channelList.appendChild(btn);
+                    }
+                });
+            }
+
+            document.querySelectorAll('.channel-btn').forEach(btn => {
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    contextChannelId = btn.dataset.channel;
+                    contextChannelName = btn.dataset.name;
+                    contextMenu.style.top = `${e.clientY}px`;
+                    contextMenu.style.left = `${e.clientX}px`;
+                    const muteBtn = document.getElementById('context-mute-btn');
+                    if (contextChannelId === 'announcements') muteBtn.style.display = 'none';
+                    else {
+                        muteBtn.style.display = 'block';
+                        muteBtn.textContent = isChannelMuted(contextChannelId) ? '🔔 Unmute Channel' : '🔕 Mute Channel';
+                    }
+                    contextMenu.classList.remove('hidden');
+                });
+            });
+
+            updateMuteUI();
+        }
+
+        async function createNewChannel() {
+            const name = prompt("Enter new private channel name:");
+            if (!name) return;
+            const channelId = 'chan_' + Math.random().toString(36).substring(2, 9);
+
+            const { error } = await supabaseClient.from('channels').insert([{ id: channelId, name, creator_id: currentUser.id }]);
+            if (!error) {
+                activeChannel = channelId;
+                loadChannels();
+                loadChannelMessages();
+            }
+        }
+
+        document.getElementById('channel-list').addEventListener('click', (e) => {
+            const btn = e.target.closest('.channel-btn');
+            if (!btn) return;
+            activeChannel = btn.dataset.channel;
+            updateMuteUI();
+            document.getElementById('active-channel-title').textContent = btn.dataset.name || btn.textContent.trim();
+            checkAnnouncementsPermissions();
+            loadChannelMessages();
+            loadChannels();
+        });
+
+        function checkAnnouncementsPermissions() {
+            const isAnnouncements = activeChannel === 'announcements';
+            const isAdmin = currentUser && (currentUser.is_admin === 1 || currentUser.username.toLowerCase() === 'sillygoobah33');
+            if (isAnnouncements && !isAdmin) {
+                msgInput.disabled = true;
+                msgInput.placeholder = "Only admins can post in announcements";
+            } else {
+                msgInput.disabled = false;
+                msgInput.placeholder = "Broadcast message...";
+            }
+        }
+
+        // --- FRIENDS & DMS ---
+        function getDMChannelID(u1, u2) {
+            const sorted = [u1, u2].sort();
+            return `dm_${sorted[0]}||${sorted[1]}`;
+        }
+
         document.getElementById('add-friend-btn').addEventListener('click', async () => {
             const input = document.getElementById('friend-username-input');
             const targetUsername = input.value.trim().toLowerCase();
-            if (!targetUsername) return alert("Enter a username.");
-            if (targetUsername === currentUser.username) return alert("Cannot add yourself.");
+            if (!targetUsername || targetUsername === currentUser.username) return;
 
-            const res = await fetch('/api/friends/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser.id, targetUsername })
-            });
-            const data = await res.json();
-            if (data.error) alert(data.error);
-            else { input.value = ''; loadFriends(); }
+            const { data: targetUser } = await supabaseClient.from('profiles').select('*').eq('username', targetUsername).maybeSingle();
+            if (!targetUser) return alert("User not found.");
+
+            const { error } = await supabaseClient.from('friends').insert([{
+                user_id: currentUser.id,
+                friend_id: targetUser.id,
+                status: 'pending'
+            }]);
+            if (!error) {
+                input.value = '';
+                loadFriends();
+            }
         });
 
         async function loadFriends() {
             if (!currentUser) return;
-            const res = await fetch(`/api/friends?userId=${currentUser.id}`);
-            const records = await res.json();
+            const { data: records } = await supabaseClient
+                .from('friends')
+                .select(`id, user_id, friend_id, status, user_profile:profiles!user_id(username, display_name), friend_profile:profiles!friend_id(username, display_name)`)
+                .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`);
+
             userFriends.clear();
             const friendsList = document.getElementById('friends-list');
             const dmList = document.getElementById('dm-list');
             friendsList.innerHTML = '';
             dmList.innerHTML = '';
+            let hasDMs = false;
 
-            records.forEach(req => {
-                const isSender = req.user_id === currentUser.id;
-                const other = isSender ? req.friend_profile : req.user_profile;
-                if (!other || !other.username) return;
+            if (records) {
+                records.forEach(req => {
+                    const isSender = req.user_id === currentUser.id;
+                    const other = isSender ? req.friend_profile : req.user_profile;
+                    if (!other) return;
 
-                allKnownUsers.add(other.username);
-                const standingInfo = onlineUsersMap.get(other.username);
-                const standing = standingInfo ? (typeof standingInfo === 'string' ? standingInfo : standingInfo.standing) : 'offline';
+                    allKnownUsers.add(other.username);
+                    const standing = onlineUsersMap.get(other.username) || 'offline';
 
-                const item = document.createElement('div');
-                item.className = "flex items-center justify-between text-xs bg-slate-950 p-2 rounded-lg border border-slate-800 gap-1";
+                    const item = document.createElement('div');
+                    item.className = "flex items-center justify-between text-xs bg-slate-950 p-2 rounded-lg border border-slate-800 gap-1";
+                    const otherDisplay = other.display_name || other.username;
 
-                if (req.status === 'accepted') {
-                    userFriends.add(other.username);
-                    item.innerHTML = `
-                        <span onclick="showUserProfile('${escapeHTML(other.username)}')" class="font-semibold text-slate-300 truncate cursor-pointer hover:underline flex items-center gap-1.5">
-                            ${renderStandingBadgeDot(standing)}
-                            <span class="truncate">${escapeHTML(other.display_name || other.username)}</span>
-                        </span>
-                        <div class="flex gap-1 shrink-0">
-                            <button onclick="openDM('${escapeHTML(other.username)}')" class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 text-[10px] px-2 py-0.5 rounded cursor-pointer">DM</button>
-                        </div>
-                    `;
-                    const dmBtn = document.createElement('button');
-                    const cid = `dm_${[currentUser.username, other.username].sort().join('||')}`;
-                    dmBtn.className = "channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-2 cursor-pointer";
-                    dmBtn.innerHTML = `${renderStandingBadgeDot(standing)} <span class="truncate">💬 ${escapeHTML(other.display_name || other.username)}</span>`;
-                    dmBtn.onclick = () => openDM(other.username);
-                    dmList.appendChild(dmBtn);
-
-                } else if (req.status === 'pending') {
-                    item.innerHTML = `<span class="text-slate-400 italic truncate">${escapeHTML(other.username)} (Pending)</span>`;
-                }
-                friendsList.appendChild(item);
-            });
+                    if (req.status === 'accepted') {
+                        userFriends.add(other.username);
+                        hasDMs = true;
+                        item.innerHTML = `
+                            <span onclick="showUserProfile('${other.username}')" class="font-semibold text-slate-300 truncate cursor-pointer hover:underline flex items-center gap-1.5">
+                                ${renderStandingBadgeDot(standing)}
+                                <span class="truncate">${otherDisplay}</span>
+                            </span>
+                            <div class="flex gap-1 shrink-0">
+                                <button onclick="openDM('${other.username}')" class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 text-[10px] px-2 py-0.5 rounded cursor-pointer">DM</button>
+                                <button onclick="removeFriend('${req.id}')" class="text-rose-400 text-[10px] px-1 cursor-pointer">✕</button>
+                            </div>
+                        `;
+                        const dmBtn = document.createElement('button');
+                        const cid = getDMChannelID(currentUser.username, other.username);
+                        dmBtn.dataset.channel = cid;
+                        dmBtn.dataset.name = `@ ${otherDisplay}`;
+                        const isActive = activeChannel === cid;
+                        dmBtn.className = `channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold ${isActive ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'} transition-colors flex items-center justify-between cursor-pointer`;
+                        dmBtn.innerHTML = `<span class="flex items-center gap-1.5 min-w-0">${renderStandingBadgeDot(standing)} <span class="truncate">💬 ${otherDisplay}</span></span>`;
+                        dmBtn.onclick = () => openDM(other.username);
+                        dmList.appendChild(dmBtn);
+                    } else if (req.status === 'pending') {
+                        item.innerHTML = `<span class="text-slate-400 italic truncate">${otherDisplay} (Pending)</span>`;
+                    }
+                    friendsList.appendChild(item);
+                });
+            }
+            if (!hasDMs) dmList.innerHTML = '<p class="text-[11px] text-slate-500 italic px-2">No active DMs</p>';
         }
 
+        async function acceptFriend(id) {
+            await supabaseClient.from('friends').update({ status: 'accepted' }).eq('id', id);
+            loadFriends();
+        }
+        async function removeFriend(id) {
+            await supabaseClient.from('friends').delete().eq('id', id);
+            loadFriends();
+        }
         function openDM(targetUsername) {
-            const cid = `dm_${[currentUser.username, targetUsername].sort().join('||')}`;
+            if (!userFriends.has(targetUsername)) return alert("Must be friends to DM.");
+            const cid = getDMChannelID(currentUser.username, targetUsername);
             activeChannel = cid;
+            updateMuteUI();
             document.getElementById('active-channel-title').textContent = `@ ${targetUsername}`;
+            checkAnnouncementsPermissions();
             loadChannelMessages();
         }
 
-        async function loadChannels() {
-            const res = await fetch(`/api/channels?userId=${currentUser.id}`);
-            const channels = await res.json();
-            const channelList = document.getElementById('channel-list');
-            channelList.innerHTML = `
-                <button data-channel="general" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-between cursor-pointer"><span># general</span></button>
-                <button data-channel="announcements" class="channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center justify-between cursor-pointer"><span>📢 announcements</span></button>
-            `;
-            channels.forEach(chan => {
-                if (chan.id !== 'general' && chan.id !== 'announcements') {
-                    const btn = document.createElement('button');
-                    btn.dataset.channel = chan.id;
-                    btn.className = "channel-btn w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-800 flex items-center justify-between cursor-pointer";
-                    btn.innerHTML = `<span>${chan.name}</span>`;
-                    channelList.appendChild(btn);
-                }
-            });
+        function listenToFriendsRealtime() {
+            supabaseClient.channel('public:friends').on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => loadFriends()).subscribe();
         }
 
-        function setupChannelSwitching() {
-            document.getElementById('channel-list').addEventListener('click', (e) => {
-                const btn = e.target.closest('.channel-btn');
-                if (!btn) return;
-                activeChannel = btn.dataset.channel;
-                document.getElementById('active-channel-title').textContent = btn.textContent.trim();
-                loadChannelMessages();
-            });
-        }
+        // --- MESSAGES ---
+        mediaFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                selectedFile = e.target.files[0];
+                filePreviewName.textContent = `Attached: ${selectedFile.name}`;
+                filePreview.classList.remove('hidden');
+            }
+        });
+        document.getElementById('cancel-file-btn').addEventListener('click', () => {
+            selectedFile = null;
+            mediaFileInput.value = '';
+            filePreview.classList.add('hidden');
+        });
 
         async function loadChannelMessages() {
-            const res = await fetch(`/api/messages?channel=${encodeURIComponent(activeChannel)}&limit=50`);
-            const messages = await res.json();
+            knownMessageIds.clear();
             chatBox.innerHTML = '';
-            for (const msg of messages) appendMessageUI(msg);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            const { data } = await supabaseClient.from('chat_messages').select('*').eq('channel_id', activeChannel).order('created_at', { ascending: true }).limit(200);
+            if (data) {
+                for (const msg of data) {
+                    knownMessageIds.add(msg.id);
+                    await appendMessageUI(msg);
+                }
+            }
         }
 
-        function appendMessageUI(msg) {
+        function startFastPolling() {
+            if (fastPollingInterval) clearInterval(fastPollingInterval);
+            fastPollingInterval = setInterval(() => {
+                if (currentUser && activeChannel) loadChannelMessagesInterval();
+            }, 1000);
+        }
+
+        async function loadChannelMessagesInterval() {
+            const { data } = await supabaseClient.from('chat_messages').select('*').eq('channel_id', activeChannel).order('created_at', { ascending: true }).limit(200);
+            if (data) {
+                for (const msg of data) {
+                    if (!knownMessageIds.has(msg.id)) {
+                        knownMessageIds.add(msg.id);
+                        await appendMessageUI(msg);
+                    }
+                }
+            }
+        }
+
+        async function appendMessageUI(msg) {
+            if (document.getElementById(`msg-${msg.id}`)) return;
+
             const msgEl = document.createElement('div');
+            msgEl.id = `msg-${msg.id}`;
             msgEl.className = "p-3 bg-slate-900/50 border border-slate-800/80 rounded-xl space-y-2 relative group min-w-0 break-words flex gap-3 items-start";
-            
-            let safeContent = escapeHTML(msg.message);
+
+            const profile = await fetchProfile(msg.username);
+            const displayName = profile ? (profile.display_name || profile.username) : msg.username;
+            const avatarUrl = profile ? profile.avatar_url : null;
+
+            let safeContent = escapeHTML(msg.message || '');
             safeContent = safeContent.replace(/@([a-z0-9_.]+)/g, '<span class="text-indigo-400 font-semibold cursor-pointer hover:underline" onclick="showUserProfile(\'$1\')">@$1</span>');
 
+            const avatarHTML = avatarUrl ? `<img src="${escapeHTML(avatarUrl)}" class="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5 border border-slate-700 cursor-pointer" onclick="showUserProfile('${escapeHTML(msg.username)}')">` : `<div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 cursor-pointer" onclick="showUserProfile('${escapeHTML(msg.username)}')">${escapeHTML(displayName.charAt(0).toUpperCase())}</div>`;
+
             msgEl.innerHTML = `
-                <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold cursor-pointer shrink-0" onclick="showUserProfile('${msg.username}')">${msg.username.charAt(0).toUpperCase()}</div>
+                ${avatarHTML}
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-center text-xs">
-                        <span class="font-bold text-slate-200 cursor-pointer hover:underline" onclick="showUserProfile('${msg.username}')">@${escapeHTML(msg.username)}</span>
+                        <span onclick="showUserProfile('${escapeHTML(msg.username)}')" class="font-bold text-slate-200 cursor-pointer hover:underline">${escapeHTML(displayName)}</span>
+                        <span class="text-[10px] text-slate-500">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                     </div>
-                    <p class="text-xs text-slate-300 mt-1">${safeContent}</p>
+                    <p class="text-xs text-slate-300 mt-1 msg-content">${safeContent}</p>
                 </div>
             `;
             chatBox.appendChild(msgEl);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        chatForm.addEventListener('submit', (e) => {
+        chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = msgInput.value.trim();
-            if (!text || !currentUser) return;
+            if ((!text && !selectedFile) || !currentUser) return;
 
-            ws.send(JSON.stringify({
-                type: 'message',
+            let mediaUrl = null;
+            if (selectedFile) {
+                const fileExt = selectedFile.name.split('.').pop();
+                const filePath = `uploads/${currentUser.id}_${Date.now()}.${fileExt}`;
+                const { error } = await supabaseClient.storage.from('chat-media').upload(filePath, selectedFile);
+                if (!error) {
+                    const { data: urlData } = supabaseClient.storage.from('chat-media').getPublicUrl(filePath);
+                    mediaUrl = urlData.publicUrl;
+                }
+            }
+
+            await supabaseClient.from('chat_messages').insert([{
                 user_id: currentUser.id,
                 username: currentUser.username,
                 channel_id: activeChannel,
-                message: text
-            }));
+                message: text,
+                media_url: mediaUrl
+            }]);
+
             msgInput.value = '';
+            selectedFile = null;
+            mediaFileInput.value = '';
+            filePreview.classList.add('hidden');
+            loadChannelMessages();
         });
 
-        async function showUserProfile(username) {
-            const res = await fetch(`/api/profile?username=${username}`);
-            const profile = await res.json();
-            if (profile.error) return alert("Profile not found.");
+        function listenToRealtimeMessages() {
+            supabaseClient.channel('public:chat_messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
+                    if (payload.new.channel_id === activeChannel && !knownMessageIds.has(payload.new.id)) {
+                        knownMessageIds.add(payload.new.id);
+                        appendMessageUI(payload.new);
+                    }
+                }).subscribe();
+        }
 
-            const presenceInfo = onlineUsersMap.get(username);
-            const standing = presenceInfo ? (typeof presenceInfo === 'string' ? presenceInfo : presenceInfo.standing) : 'offline';
+        // --- REPORTING & ADMIN MODERATION ---
+        function triggerReport(targetType, targetId) {
+            activeReportTarget = { targetType, targetId };
+            document.getElementById('report-reason-input').value = '';
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
 
-            document.getElementById('view-profile-dname').textContent = profile.display_name || profile.username;
-            document.getElementById('view-profile-uname').textContent = `@${profile.username}`;
-            document.getElementById('view-profile-status').textContent = profile.custom_status ? `💬 ${profile.custom_status}` : `Standing: ${standing}`;
-            document.getElementById('view-profile-bio').textContent = profile.bio || "No bio provided.";
-            document.getElementById('view-profile-modal').classList.remove('hidden');
+        document.getElementById('submit-report-btn').addEventListener('click', async () => {
+            const reason = document.getElementById('report-reason-input').value.trim();
+            if (!reason) return;
+            await supabaseClient.from('reports').insert([{
+                reporter_username: currentUser.username,
+                target_type: activeReportTarget.targetType,
+                target_id: String(activeReportTarget.targetId),
+                reason
+            }]);
+            alert("Report submitted.");
+            document.getElementById('report-modal').classList.add('hidden');
+        });
+
+        document.getElementById('open-admin-panel-btn').addEventListener('click', async () => {
+            document.getElementById('admin-panel-modal').classList.remove('hidden');
+            const { data } = await supabaseClient.from('reports').select('*').order('created_at', { ascending: false });
+            const list = document.getElementById('admin-reports-list');
+            list.innerHTML = '';
+            if (data) {
+                data.forEach(r => {
+                    const div = document.createElement('div');
+                    div.className = "bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs space-y-1";
+                    div.innerHTML = `
+                        <div class="font-bold text-slate-300">Report by @${escapeHTML(r.reporter_username)}</div>
+                        <p class="text-slate-400">Target (${escapeHTML(r.target_type)}): <b>${escapeHTML(r.target_id)}</b></p>
+                        <p class="text-slate-300 italic">"${escapeHTML(r.reason)}"</p>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+        });
+
+        // --- AUDIO / WEBRTC CALLING ---
+        function listenToPersonalSignaling() {
+            personalSignalingChannel = supabaseClient.channel(`user-signal:${currentUser.username}`);
+            personalSignalingChannel.on('broadcast', { event: 'signal' }, async ({ payload }) => {
+                if (payload.type === 'offer') {
+                    pendingOfferPayload = payload;
+                    document.getElementById('incoming-caller-text').textContent = `@${payload.callerUsername} is calling...`;
+                    document.getElementById('incoming-call-modal').classList.remove('hidden');
+                } else if (payload.type === 'answer' && peerConnection) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+                } else if (payload.type === 'ice-candidate' && peerConnection) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+                } else if (payload.type === 'end-call') {
+                    cleanUpCallState();
+                }
+            }).subscribe();
+        }
+
+        async function startCall() {
+            let targetFriend = null;
+            if (activeChannel.startsWith('dm_')) {
+                const parts = activeChannel.replace('dm_', '').split('||');
+                targetFriend = parts.find(u => u !== currentUser.username);
+            }
+            if (!targetFriend) return alert("You can only start calls inside direct message chats with friends.");
+
+            activeCallTarget = targetFriend;
+            document.getElementById('call-bar').classList.remove('hidden');
+            document.getElementById('call-status').textContent = `Calling ${targetFriend}...`;
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                setupPeerConnection(targetFriend);
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                sendSignal(targetFriend, { type: 'offer', offer, callerUsername: currentUser.username });
+            } catch (err) {
+                alert("Microphone permission denied.");
+                cleanUpCallState();
+            }
+        }
+
+        document.getElementById('accept-call-btn').addEventListener('click', async () => {
+            document.getElementById('incoming-call-modal').classList.add('hidden');
+            if (!pendingOfferPayload) return;
+            const payload = pendingOfferPayload;
+            activeCallTarget = payload.callerUsername;
+
+            document.getElementById('call-bar').classList.remove('hidden');
+            document.getElementById('call-status').textContent = `In Call with ${payload.callerUsername}`;
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                setupPeerConnection(payload.callerUsername);
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                sendSignal(payload.callerUsername, { type: 'answer', answer });
+            } catch (err) {
+                cleanUpCallState();
+            }
+        });
+
+        document.getElementById('reject-call-btn').addEventListener('click', () => {
+            document.getElementById('incoming-call-modal').classList.add('hidden');
+            if (pendingOfferPayload) sendSignal(pendingOfferPayload.callerUsername, { type: 'end-call' });
+            pendingOfferPayload = null;
+        });
+
+        document.getElementById('end-call-btn').addEventListener('click', () => {
+            if (activeCallTarget) sendSignal(activeCallTarget, { type: 'end-call' });
+            cleanUpCallState();
+        });
+
+        function setupPeerConnection(targetUsername) {
+            peerConnection = new RTCPeerConnection(rtcConfig);
+            peerConnection.onicecandidate = (e) => {
+                if (e.candidate) sendSignal(targetUsername, { type: 'ice-candidate', candidate: e.candidate });
+            };
+            peerConnection.ontrack = (e) => {
+                const remoteAudio = document.getElementById('remote-audio');
+                if (remoteAudio.srcObject !== e.streams[0]) {
+                    remoteAudio.srcObject = e.streams[0];
+                    remoteAudio.play().catch(err => console.warn(err));
+                }
+            };
+        }
+
+        function sendSignal(targetUsername, payload) {
+            supabaseClient.channel(`user-signal:${targetUsername}`).send({ type: 'broadcast', event: 'signal', payload });
+        }
+
+        function cleanUpCallState() {
+            document.getElementById('incoming-call-modal').classList.add('hidden');
+            document.getElementById('call-bar').classList.add('hidden');
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            activeCallTarget = null;
+            pendingOfferPayload = null;
         }
 
         function escapeHTML(str) {
